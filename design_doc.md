@@ -17,6 +17,10 @@ As a tech recruiter, I want to see featured projects fast, so that I can judge i
 
 As a tech recruiter, I want to see candidates tech stack with a swipe, so that I can judge fit quickly.
 
-As a mobile user, I want to see the website follows the athestic and layout of the desktop version, so that I know I'm not missing out on the cool design
+As a mobile user, I want to see the website follows the athestic and layout of the desktop version, so that I know I'm not missing out on any cool design
 
 As a mobile user, I want to have a easy to navigate website, so that I can find the information I want easily.
+
+## Wireframe
+
+![Screenshot of the project wireframe](wireframe.png "project wireframe")
