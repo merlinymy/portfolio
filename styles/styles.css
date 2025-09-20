@@ -1,0 +1,137 @@
+* {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #0b0d10;
+  --surface-1: #12161b;
+  --surface-2: #171c23;
+  --line: #252c34;
+
+  --gofun: #fffffc;
+  --hakuji: #f8f8f8;
+  --unohana: #f7fcfe;
+  --kinariro: #fbfaf5;
+  --shironeri: #f3f3f2;
+  --soshoku: #eae5e3;
+  --shiraumenezu: #e5e4e6;
+  --milkywhite: #f3f3f3;
+  --murasakisuishiyou: #e7e7eb;
+  --shironezu: #dcdddd;
+
+  --font-body: "Quicksand", sans-serif, system-ui;
+  --font-h1: "Space Grotesk", sans-serif, system-ui;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--milkywhite);
+  height: 100dvh;
+  width: 100dvw;
+}
+
+header {
+  position: sticky;
+  z-index: 10;
+  background-color: var(--bg);
+  top: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+h1 {
+  font-family: var(--font-h1);
+  font-weight: 400;
+  padding: 1rem;
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
+}
+
+.nav-items {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+header > span {
+  position: absolute;
+  right: 1rem;
+  cursor: pointer;
+}
+
+span.hidden {
+  display: none;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  width: 100dvw;
+  height: 100dvh;
+  background-color: var(--surface-1);
+}
+.nav-items {
+  height: 100%;
+}
+.dropdown > .nav-items {
+  font-size: 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-top: 3rem;
+  gap: 4rem;
+  align-items: center;
+}
+
+.hidden {
+  display: none;
+}
+
+.hero-wrap {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  text-align: center;
+  margin-top: 2.85rem;
+  gap: 2rem;
+  height: 90dvh;
+}
+.hero-wrap > h2 {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.hero-wrap > p {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 2rem 2rem;
+  background-color: rgba(var(--unohana), 0.35);
+  backdrop-filter: blur(3px);
+}
+
+.download-resume {
+  padding: 0.75rem 2rem;
+  background-color: var(--bg);
+  color: var(--milkywhite);
+  border: 1px solid var(--milkywhite);
+  border-radius: 5px;
+}
+
+.webgl {
+  position: absolute;
+  z-index: -10;
+  height: 100%;
+}
+
+.honeycomb-wrap {
+  height: 100dvh;
+}
