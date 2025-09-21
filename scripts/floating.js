@@ -8,6 +8,7 @@ const animateSphere = () => {
     height: landingSection.getBoundingClientRect().height,
   };
   const scene = new THREE.Scene();
+  scene.background = new THREE.Color().set("#0b0d10");
   const cam = new THREE.PerspectiveCamera(
     75,
     canvasSize.width / canvasSize.height,
@@ -22,7 +23,6 @@ const animateSphere = () => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
   window.addEventListener("resize", () => {
-    console.log(landingSection.getBoundingClientRect().height);
     canvasSize.width = landingSection.getBoundingClientRect().width;
     canvasSize.height = landingSection.getBoundingClientRect().height;
     cam.aspect = canvasSize.width / canvasSize.height;
@@ -65,6 +65,14 @@ const animateSphere = () => {
     window.requestAnimationFrame(tick);
   };
   tick();
+
+  let lastScrollY = window.scrollY;
+
+  window.addEventListener("scroll", function () {
+    const currentScrollY = window.scrollY;
+    lastScrollY = currentScrollY;
+    cam.position.set(0, lastScrollY * -0.01, 50);
+  });
 };
 
 export { animateSphere };
