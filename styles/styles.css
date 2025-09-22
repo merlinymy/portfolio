@@ -34,6 +34,11 @@ body {
   width: 100dvw;
 }
 
+h2 {
+  font-family: var(--font-h1);
+  font-weight: 200;
+}
+
 header {
   position: sticky;
   z-index: 10;
@@ -102,7 +107,6 @@ span.hidden {
   margin-top: 5dvh;
   padding-top: 2dvh;
   gap: 2rem;
-  height: 90dvh;
 }
 .hero-wrap > h2 {
   display: flex;
@@ -116,7 +120,6 @@ span.hidden {
   gap: 1rem;
   font-size: 1.25rem;
   padding: 2rem 2rem;
-  background-color: rgba(var(--unohana), 0.35);
   backdrop-filter: blur(3px);
 }
 
@@ -192,10 +195,109 @@ a {
   object-fit: cover;
 }
 
+.projects-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 1.25rem;
+  margin-top: 3rem;
+}
+
+.projects-wrap > h2 {
+  align-self: center;
+  font-weight: 500;
+  font-size: 2rem;
+  letter-spacing: 2px;
+}
+
+.project-grid {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: repeat(1, auto);
+}
+
 .project-card {
-  height: 30rem;
+  border-radius: 15px;
+  overflow: hidden;
+  border: 2px solid var(--murasakisuishiyou);
+  backdrop-filter: blur(15px);
+}
+
+.project-card:hover {
+  border: 2px solid rgb(174, 174, 255);
 }
 
 .project-img-wrap {
-  height: 5rem;
+  height: 20rem;
+  overflow: hidden;
+}
+
+.project-info-wrap {
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 1.65rem;
+}
+
+.project-desc {
+  line-height: 1.5;
+}
+
+.project-title {
+  font-family: var(--font-h1);
+  font-size: 1.5rem;
+  line-height: 1.5;
+  color: var(--gofun);
+}
+
+.tech-list {
+  display: flex;
+  gap: 3%;
+}
+
+.tech-list > span {
+  color: var(--gofun);
+  padding: 0.25rem 0.45rem;
+  border-radius: 5px;
+  white-space: nowrap;
+  border: 1px solid var(--soshoku);
+}
+
+.project-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: 60%;
+}
+
+.project-links > a {
+  text-align: center;
+  border: 1px solid white;
+  padding: 0.5rem 0rem;
+  width: 100%;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.project-links > a {
+  text-align: center;
+  border: 1px solid white;
+  padding: 0.5rem 0rem;
+  width: 100%;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+@media (min-width: 700px) {
+  .project-grid {
+    grid-template-columns: repeat(2, auto);
+  }
+}
+
+@media (min-width: 1275px) {
+  .project-grid {
+    grid-template-columns: repeat(3, auto);
+  }
 }

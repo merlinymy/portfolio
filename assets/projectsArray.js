@@ -13,14 +13,14 @@ export const projectArr = [
     imgUrl: "../assets/projectImg/smgen.png",
     name: "Social Media Post Generator",
     desc: "An AI-powered social media post generator with multilingual support, business info management, and a personalized dashboard.",
-    tech: ["React", "Tailwind", "Supabase", "Claude Code"],
+    tech: ["React", "Tailwind", "Supabase", "Cursor"],
     links: ["https://fantastmediagen.vercel.app/login"],
   },
   {
     imgUrl: "../assets/projectImg/fireproofship.png",
-    name: "Fire Proof Sheep",
-    desc: "A top-down roguelike web game built with PixiJS. Battle through procedurally generated rooms with a unique wool-based resource system that powers both offense and defense.",
-    tech: ["Pixi.js, Claude Code"],
+    name: "Fireproof Sheep",
+    desc: "A top-down shooter web game built with PixiJS. With a unique wool-based resource system that powers both offense and defense.",
+    tech: ["Pixi.js", "Claude Agent"],
     links: ["https://fire-proof-sheep.vercel.app/"],
   },
   {
