@@ -5,8 +5,12 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 :root {
-  --bg: #0b0d10;
+  --bg: rgba(20, 20, 20, 1);
   --surface-1: #12161b;
   --surface-2: #171c23;
   --line: #252c34;
@@ -34,12 +38,14 @@
   );
 }
 
+.noscroll {
+  overflow: hidden;
+}
+
 body {
   font-family: var(--font-body);
   background: var(--bg);
   color: var(--milkywhite);
-  height: 100dvh;
-  /* width: 100dvw; */
 }
 
 h2 {
@@ -50,15 +56,16 @@ h2 {
 header {
   position: sticky;
   z-index: 10;
-  background-color: var(--bg);
   top: 0;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
+  backdrop-filter: blur(5px);
+  box-shadow: 0px 0px 5px var(--hakuji);
 }
 
-header > p {
+header p {
   font-size: clamp(1.5rem, 5vw, 2.5rem);
   font-family: var(--font-h1);
   font-weight: 400;
@@ -71,6 +78,7 @@ header > p {
     var(--bg) 100%
   );
   background-clip: text;
+  cursor: pointer;
 }
 
 h1 {
@@ -88,6 +96,22 @@ h1 {
   flex-direction: row;
   gap: 1rem;
   padding: 1rem;
+}
+.nav-items li {
+  padding: 0.25rem 1rem;
+  transition: all 300ms;
+  background-color: var(--bg);
+  background-clip: text;
+  color: var(--gofun);
+  font-size: 1.55rem;
+}
+
+.nav-items li:hover {
+  cursor: pointer;
+  background-color: var(--prime-theme);
+  background-clip: text;
+  color: transparent;
+  transition: all 350ms;
 }
 
 header > span {
@@ -130,9 +154,9 @@ span.hidden {
   justify-content: flex-start;
   align-items: center;
   text-align: center;
-  margin-top: 5dvh;
-  padding-top: 2dvh;
+  padding: 4dvh;
   gap: 1rem;
+  backdrop-filter: blur(3px);
 }
 .hero-wrap > h2 {
   display: flex;
@@ -146,7 +170,6 @@ span.hidden {
   gap: 1rem;
   font-size: 1.25rem;
   padding: 0.25rem 2rem;
-  backdrop-filter: blur(3px);
 }
 
 .contact-info {
@@ -161,6 +184,7 @@ span.hidden {
   border: 1px solid var(--milkywhite);
   border-radius: 5px;
   transition: all 500ms;
+  cursor: pointer;
 }
 
 .download-resume:hover {
@@ -206,6 +230,7 @@ a {
   width: clamp(7rem, 20dvw, 12rem);
   height: auto;
   border-radius: 50%;
+  /* box-shadow: 0px 0px 100px var(--prime-theme); */
   object-fit: cover;
 }
 
@@ -215,16 +240,19 @@ a {
   object-fit: cover;
 }
 
-.projects-wrap {
+.projects-wrap,
+.skills-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.15rem;
   padding: 1.25rem;
-  margin-top: 3rem;
+  padding-top: 80px;
+  /* margin-top: 3rem; */
 }
 
-.projects-wrap > h2 {
+.projects-wrap > h2,
+.skills-wrap > h2 {
   align-self: center;
   font-weight: 500;
   font-size: 3rem;
@@ -329,10 +357,127 @@ a {
   .project-grid {
     grid-template-columns: repeat(2, auto);
   }
+
+  header > .material-symbols-outlined {
+    display: none;
+  }
+
+  .nav-bar {
+    display: block;
+  }
 }
 
 @media (min-width: 1275px) {
   .project-grid {
     grid-template-columns: repeat(3, auto);
+  }
+}
+
+/* GPT5 Generated styling for Skill Section based on my project section styling */
+/* === Skills grid: mirror project grid layout/feel === */
+
+.skill-grid {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: repeat(1, auto);
+  max-width: 1400px;
+  margin-top: 2rem;
+}
+
+/* same card shell/hover behavior as project-card */
+.skill-card {
+  border-radius: 15px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  transition: all 500ms;
+}
+
+.skill-card:hover {
+  border: 1px solid var(--prime-theme);
+  box-shadow: 0px 0px 20px var(--prime-theme),
+    inset 0px 0px 20px var(--prime-theme);
+  transition: all 350ms;
+}
+
+/* section title inside the card */
+.skill-card > .card-title {
+  font-family: var(--font-h1);
+  font-weight: 600;
+  font-size: 1.35rem;
+  line-height: 1.4;
+  color: var(--gofun);
+  padding: 1.25rem 1.5rem 0.5rem 1.5rem;
+  background: transparent;
+}
+
+/* inner grid of skill chips (icons + names) */
+.sk-container {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 1.5rem 1.5rem 1.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.sk-card {
+  display: flex;
+  flex-direction: column; /* stack icon over text */
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--soshoku);
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: var(--surface-2);
+  transition: all 300ms;
+  text-align: center;
+  overflow: hidden; /* make sure content doesn’t spill */
+}
+
+.sk-card:hover {
+  box-shadow: 0px 0px 15px var(--soshoku);
+  transform: translateY(-1px);
+}
+
+/* icon wrapper: collapses if no svg */
+.skill-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.skill-icon svg {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+
+/* name styling: no wrap */
+.skill-name {
+  color: var(--gofun);
+  font-size: 0.9rem;
+  line-height: 1.2;
+  white-space: nowrap; /* don’t allow wrapping */
+  overflow: hidden; /* hide overflow */
+  text-overflow: ellipsis; /* add "…" if text is too long */
+}
+
+/* responsive columns to match project grid breakpoints */
+@media (min-width: 700px) {
+  .skill-grid {
+    grid-template-columns: repeat(2, auto);
+  }
+  .sk-container {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1275px) {
+  .skill-grid {
+    grid-template-columns: repeat(3, auto);
+  }
+  .sk-container {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

@@ -3,12 +3,13 @@ import * as THREE from "three";
 const animateSphere = () => {
   const canvas = document.querySelector(".webgl");
   const landingSection = document.querySelector("main");
+  console.log(landingSection.getBoundingClientRect().height);
   const canvasSize = {
     width: landingSection.getBoundingClientRect().width,
     height: landingSection.getBoundingClientRect().height,
   };
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color().set("#0b0d10");
+  scene.background = new THREE.Color().set("rgba(20, 20, 20, 1)");
   const cam = new THREE.PerspectiveCamera(
     75,
     canvasSize.width / canvasSize.height,
@@ -31,7 +32,7 @@ const animateSphere = () => {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   });
 
-  const geometry = new THREE.TorusKnotGeometry(9, 1.2, 32, 16, 10, 5);
+  const geometry = new THREE.TorusKnotGeometry(6, 0.4, 32, 16, 10, 5);
   const material = new THREE.MeshStandardMaterial({
     color: "#f3f3f3",
     metalness: 1,
@@ -40,7 +41,7 @@ const animateSphere = () => {
 
   const torusKnot = new THREE.Mesh(geometry, material);
 
-  torusKnot.position.set(0, 10, 0);
+  torusKnot.position.set(0, 30, 0);
   scene.add(torusKnot);
 
   const light = new THREE.PointLight("rgba(209, 209, 252, 1)", 10);
