@@ -490,3 +490,12 @@ a {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+.footer {
+  text-align: center;
+  padding: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--shiraumenezu);
+  border-top: 1px solid var(--line);
+  background-color: var(--surface-1);
+}
