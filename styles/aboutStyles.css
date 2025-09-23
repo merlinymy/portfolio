@@ -190,7 +190,7 @@ a {
 .about-principles,
 .about-personal,
 .about-connect,
-.about-colophon {
+.about-hero {
   border-radius: 15px;
   border: 1px solid transparent;
   backdrop-filter: blur(15px);
@@ -202,7 +202,7 @@ a {
 .about-principles:hover,
 .about-personal:hover,
 .about-connect:hover,
-.about-colophon:hover {
+.about-hero:hover {
   border: 1px solid var(--prime-theme);
   box-shadow: 0px 0px 20px var(--prime-theme),
     inset 0px 0px 20px var(--prime-theme);
