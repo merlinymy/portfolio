@@ -353,6 +353,15 @@ a {
   cursor: pointer;
 }
 
+@media (max-width: 768px) {
+  .mobile-in-view {
+    border: 1px solid var(--prime-theme);
+    box-shadow: 0px 0px 20px var(--prime-theme),
+      inset 0px 0px 20px var(--prime-theme);
+    transition: all 350ms;
+  }
+}
+
 @media (min-width: 700px) {
   .project-grid {
     grid-template-columns: repeat(2, auto);
