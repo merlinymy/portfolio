@@ -32,7 +32,7 @@ const animateSphere = () => {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   });
 
-  const geometry = new THREE.TorusKnotGeometry(6, 0.4, 32, 16, 10, 5);
+  const geometry = new THREE.TorusKnotGeometry(10, 0.4, 32, 16, 10, 5);
   const material = new THREE.MeshStandardMaterial({
     color: "#f3f3f3",
     metalness: 1,
@@ -41,7 +41,7 @@ const animateSphere = () => {
 
   const torusKnot = new THREE.Mesh(geometry, material);
 
-  torusKnot.position.set(0, 30, 0);
+  torusKnot.position.set(0, 20, 0);
   scene.add(torusKnot);
 
   const light = new THREE.PointLight("rgba(209, 209, 252, 1)", 10);
