@@ -283,7 +283,8 @@ a {
 
 .project-card:hover {
   border: 1px solid var(--prime-theme);
-  box-shadow: 0px 0px 20px var(--prime-theme),
+  box-shadow:
+    0px 0px 20px var(--prime-theme),
     inset 0px 0px 20px var(--prime-theme);
   transition: all 350ms;
 }
@@ -356,7 +357,8 @@ a {
 @media (max-width: 768px) {
   .mobile-in-view {
     border: 1px solid var(--prime-theme);
-    box-shadow: 0px 0px 20px var(--prime-theme),
+    box-shadow:
+      0px 0px 20px var(--prime-theme),
       inset 0px 0px 20px var(--prime-theme);
     transition: all 350ms;
   }
@@ -407,7 +409,8 @@ a {
 
 .skill-card:hover {
   border: 1px solid var(--prime-theme);
-  box-shadow: 0px 0px 20px var(--prime-theme),
+  box-shadow:
+    0px 0px 20px var(--prime-theme),
     inset 0px 0px 20px var(--prime-theme);
   transition: all 350ms;
 }
