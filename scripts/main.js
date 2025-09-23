@@ -27,7 +27,7 @@ popupItems.forEach((item) => {
 });
 
 document.querySelector(".download-resume").addEventListener("click", () => {
-  window.open("/assets/Merlin_Yang_Resume.pdf", "_blank");
+  window.open("/Merlin_Yang_Resume.pdf", "_blank");
 });
 
 animateSphere();
