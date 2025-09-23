@@ -1,5 +1,5 @@
 document.querySelector(".download-resume").addEventListener("click", () => {
-  window.open("/Merlin_Yang_Resume.pdf", "_blank");
+  window.open("./public/Merlin_Yang_Resume.pdf", "_blank");
 });
 
 let projectPrevThreshold = 0.3;

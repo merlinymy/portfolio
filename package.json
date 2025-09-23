@@ -4,16 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "vite",
-    "build": "vite build"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "tech-stack-icons": "^3.3.2",
-    "three": "^0.180.0",
-    "vite": "^7.1.6"
+    "three": "^0.180.0"
   }
 }

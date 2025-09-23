@@ -10,7 +10,7 @@ const skillCards = skillArr.map((skill) => buildSkillCard(skill));
 populateSkillGrid(skillCards);
 
 document.querySelector(".download-resume").addEventListener("click", () => {
-  window.open("/Merlin_Yang_Resume.pdf", "_blank");
+  window.open("./public/Merlin_Yang_Resume.pdf", "_blank");
 });
 
 animateSphere();
