@@ -6,7 +6,6 @@ const buildSkillCard = (skillSet) => {
   cardTitle.textContent = skillSet.group;
   const skCardsContainer = document.createElement("div");
   skCardsContainer.classList.add("sk-container");
-  console.log(skillSet);
   skillSet.skills.map((skill) => {
     const skCard = document.createElement("div");
     skCard.classList.add("sk-card");
