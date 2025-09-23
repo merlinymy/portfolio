@@ -34,17 +34,11 @@ animateSphere();
 // Apply glow effects on mobile with intersection observer
 // https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API
 
-let projectPrevThreshold = 0.0;
-let skillPrevThreshold = 0.0;
+let projectPrevThreshold = 0.3;
 
 const projectCardIOOptions = {
   root: null,
-  threshold: 0.75,
-};
-
-const skillCardIOOptions = {
-  root: null,
-  threshold: 1,
+  threshold: 0.55,
 };
 
 const projectIOCallback = (entries) => {
@@ -58,23 +52,8 @@ const projectIOCallback = (entries) => {
   });
 };
 
-const skillIOCallback = (entries) => {
-  entries.forEach((entry) => {
-    if (entry.intersectionRatio > skillPrevThreshold) {
-      entry.target.classList.add("mobile-in-view");
-    } else {
-      entry.target.classList.remove("mobile-in-view");
-    }
-    skillPrevThreshold = entry.intersectionRatio;
-  });
-};
 const projectObserver = new IntersectionObserver(
   projectIOCallback,
   projectCardIOOptions
 );
-const skillObserver = new IntersectionObserver(
-  skillIOCallback,
-  skillCardIOOptions
-);
 projectCards.forEach((card) => projectObserver.observe(card));
-skillCards.forEach((card) => skillObserver.observe(card));
