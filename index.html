@@ -18,20 +18,31 @@
     />
   </head>
   <body>
+    <canvas class="webgl"></canvas>
     <header>
-      <p>MY</p>
-      <nav class="hidden">
+      <a href="/">
+        <p>MY</p>
+      </a>
+      <nav class="nav-bar hidden">
         <ul class="nav-items">
-          <li>Projects</li>
-          <li>Skills</li>
+          <a href="#project-sec">
+            <li>Projects</li>
+          </a>
+          <a href="#skill-sec">
+            <li>Skills</li>
+          </a>
           <li>About</li>
           <li>Connect</li>
         </ul>
       </nav>
       <div class="dropdown hidden">
         <ul class="nav-items">
-          <li>Projects</li>
-          <li>Skills</li>
+          <a href="#project-sec">
+            <li>Projects</li>
+          </a>
+          <a href="#skill-sec">
+            <li>Skills</li>
+          </a>
           <li>About</li>
           <li>Connect</li>
         </ul>
@@ -41,7 +52,7 @@
       <span class="material-symbols-outlined close-icon hidden">close</span>
     </header>
     <main>
-      <section class="hero-wrap">
+      <section id="hero-sec" class="hero-wrap">
         <div class="profile-pic">
           <img src="/assets/profilePic.jpeg" alt="profile pic of Merlin Yang" />
         </div>
@@ -97,18 +108,21 @@
             </a>
           </div>
         </div>
-        <canvas class="webgl"></canvas>
         <div class="scroll-for-more hidden">
           <span class="material-symbols-outlined point-down"> south </span>
           <p>projects, skills</p>
           <p>and more</p>
         </div>
       </section>
-      <section class="projects-wrap">
+      <section id="skill-sec" class="skills-wrap">
+        <h2>My Skills</h2>
+        <div class="skill-grid"></div>
+      </section>
+
+      <section id="project-sec" class="projects-wrap">
         <h2>My Projects</h2>
         <div class="project-grid"></div>
       </section>
-      <section class="skills-wrap"></section>
       <section class="about-wrap"></section>
     </main>
   </body>
