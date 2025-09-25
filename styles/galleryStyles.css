@@ -719,6 +719,67 @@
   border-color: rgba(252, 126, 32, 1);
 }
 
+/* Back to Top Button */
+.back-to-top {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 56px;
+  height: 56px;
+  background: rgba(20, 20, 20, 0.9);
+  border: 2px solid rgba(252, 126, 32, 0.5);
+  color: var(--hakuji);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
+}
+
+.back-to-top:not(.hidden) {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.back-to-top:hover {
+  background: rgba(252, 126, 32, 0.9);
+  border-color: rgba(252, 126, 32, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(252, 126, 32, 0.3);
+  color: var(--bg);
+}
+
+.back-to-top:focus-visible {
+  outline: 2px solid var(--prime-theme);
+  outline-offset: 2px;
+}
+
+.back-to-top .material-symbols-outlined {
+  font-size: 24px;
+  line-height: 1;
+}
+
+/* Mobile adjustments for back to top */
+@media (max-width: 768px) {
+  .back-to-top {
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 50px;
+    height: 50px;
+  }
+
+  .back-to-top .material-symbols-outlined {
+    font-size: 20px;
+  }
+}
+
 /* Very small screens */
 @media (max-width: 480px) {
   .gallery-hero h1 {

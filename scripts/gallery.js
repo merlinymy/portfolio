@@ -21,6 +21,7 @@ class Gallery {
     this.carouselTotal = document.getElementById('carousel-total');
     this.thumbnailsContainer = document.getElementById('thumbnails-container');
     this.carouselDescription = document.getElementById('carousel-description');
+    this.backToTopBtn = document.getElementById('back-to-top');
 
     this.init();
   }
@@ -30,6 +31,7 @@ class Gallery {
     this.filterByTag(this.activeFilter);
     this.setupLightboxEvents();
     this.setupKeyboardEvents();
+    this.setupBackToTop();
   }
 
   /**
@@ -458,6 +460,77 @@ class Gallery {
 
     // Restore scroll position
     window.scrollTo(0, this.scrollPosition);
+  }
+
+  /**
+   * Sets up back to top button functionality
+   */
+  setupBackToTop() {
+    if (!this.backToTopBtn) return;
+
+    let isThrottled = false;
+
+    // Throttled scroll handler for better performance
+    const handleScroll = () => {
+      if (isThrottled) return;
+
+      isThrottled = true;
+      requestAnimationFrame(() => {
+        this.toggleBackToTopButton();
+        isThrottled = false;
+      });
+    };
+
+    // Add scroll event listener
+    window.addEventListener('scroll', handleScroll);
+
+    // Add click event listener
+    this.backToTopBtn.addEventListener('click', () => {
+      this.scrollToTop();
+    });
+
+    // Add keyboard event listener
+    this.backToTopBtn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this.scrollToTop();
+      }
+    });
+
+    // Initial check
+    this.toggleBackToTopButton();
+  }
+
+  /**
+   * Toggles back to top button visibility based on scroll position
+   */
+  toggleBackToTopButton() {
+    if (!this.backToTopBtn) return;
+
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const documentHeight = document.documentElement.scrollHeight;
+    const windowHeight = window.innerHeight;
+    const scrollPercentage = scrollTop / (documentHeight - windowHeight);
+
+    // Show button if page is long enough and user has scrolled past 50%
+    const isPageLong = documentHeight > windowHeight * 1.5; // Page is at least 1.5x viewport height
+    const hasScrolledPast50Percent = scrollPercentage > 0.5;
+
+    if (isPageLong && hasScrolledPast50Percent) {
+      this.backToTopBtn.classList.remove('hidden');
+    } else {
+      this.backToTopBtn.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Smoothly scrolls to the top of the page
+   */
+  scrollToTop() {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   }
 
   /**
