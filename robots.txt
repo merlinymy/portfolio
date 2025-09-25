@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://merlinyangdev.com/sitemap.xml
+
+# Disallow crawling of assets that aren't meant for indexing
+Disallow: /node_modules/
+Disallow: /*.log$
+Disallow: /*.json$
+
+# Allow crawling of important assets
+Allow: /assets/
+Allow: /styles/
+Allow: /scripts/
+Allow: /public/
+
+# Crawl-delay (optional - helps with server load)
+Crawl-delay: 1

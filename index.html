@@ -3,12 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Merlin Yang's Portfolio</title>
+    <title>Merlin Yang - Full-Stack AI Developer | Portfolio</title>
     <meta name="author" content="Merlin Yang" />
     <meta
       name="description"
-      content="Portfolio of Merlin Yang, a Full-Stack AI Developer building pragmatic products: AI tools, scalable web apps, and data-driven systems."
+      content="Portfolio of Merlin Yang, a Full-Stack AI Developer building pragmatic products: AI tools, scalable web apps, and data-driven systems. View projects, skills, and photography."
     />
+    <meta name="keywords" content="Full-Stack Developer, AI Developer, Web Development, React, Node.js, Python, Machine Learning, Portfolio, JavaScript, TypeScript" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://merlinyangdev.com/" />
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Merlin Yang - Full-Stack AI Developer | Portfolio" />
+    <meta property="og:description" content="Portfolio of Merlin Yang, a Full-Stack AI Developer building pragmatic products: AI tools, scalable web apps, and data-driven systems." />
+    <meta property="og:url" content="https://merlinyangdev.com/" />
+    <meta property="og:site_name" content="Merlin Yang Portfolio" />
+    <meta property="og:image" content="https://merlinyangdev.com/assets/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Merlin Yang - Full-Stack AI Developer" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Merlin Yang - Full-Stack AI Developer | Portfolio" />
+    <meta name="twitter:description" content="Portfolio of Merlin Yang, a Full-Stack AI Developer building pragmatic products: AI tools, scalable web apps, and data-driven systems." />
+    <meta name="twitter:image" content="https://merlinyangdev.com/assets/og-image.jpg" />
+    <meta name="twitter:image:alt" content="Merlin Yang - Full-Stack AI Developer" />
+    <meta name="twitter:creator" content="@merlinyangdev" />
+    <meta name="twitter:site" content="@merlinyangdev" />
 
     <link rel="icon" href="./public/favicon.png" type="image/png" />
     <link rel="stylesheet" href="./styles/styles.css" />
@@ -20,10 +44,50 @@
       href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&family=Space+Grotesk:wght@300..700&display=swap"
       rel="stylesheet"
     />
+    <link rel="preload" href="./assets/profilePic.jpeg" as="image" type="image/jpeg" />
     <link
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
       rel="stylesheet"
     />
+
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": "Merlin Yang",
+      "jobTitle": "Full-Stack AI Developer",
+      "description": "Full-Stack AI Developer building pragmatic products: AI tools, scalable web apps, and data-driven systems",
+      "url": "https://merlinyangdev.com",
+      "image": "https://merlinyangdev.com/assets/profilePic.jpeg",
+      "sameAs": [
+        "https://www.linkedin.com/in/merlinyangdev/",
+        "https://github.com/merlinymy"
+      ],
+      "knowsAbout": [
+        "Full-Stack Development",
+        "Artificial Intelligence",
+        "Web Development",
+        "React",
+        "Node.js",
+        "Python",
+        "Machine Learning",
+        "JavaScript",
+        "TypeScript"
+      ],
+      "alumniOf": {
+        "@type": "CollegeOrUniversity",
+        "name": "Northeastern University",
+        "sameAs": "https://www.northeastern.edu/"
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Oakland",
+        "addressRegion": "CA",
+        "addressCountry": "US"
+      }
+    }
+    </script>
   </head>
   <body>
     <canvas class="webgl"></canvas>
@@ -62,7 +126,10 @@
         <div class="profile-pic">
           <img
             src="./assets/profilePic.jpeg"
-            alt="profile pic of Merlin Yang"
+            alt="Professional headshot of Merlin Yang, Full-Stack AI Developer"
+            width="200"
+            height="200"
+            loading="eager"
           />
         </div>
         <h1>Merlin Yang</h1>
