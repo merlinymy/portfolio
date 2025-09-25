@@ -33,7 +33,7 @@ export const galleryArr = [
     url: "./assets/gallery_web/arora.webp",
     name: "Aurora over Landscape, Sister Bay, 2024",
     alt: "Bands of green aurora borealis stretching across the night sky above a dark landscape.",
-    tags: ["Night Sky", "Landscape", "Signature"],
+    tags: ["Night Sky", "Landscape"],
   },
   {
     url: "./assets/gallery_web/arora2.webp",
