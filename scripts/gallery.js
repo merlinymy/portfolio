@@ -7,8 +7,10 @@ import { galleryArr } from '../assets/galleryArr.js';
 class Gallery {
   constructor() {
     this.images = galleryArr;
+    this.filteredImages = galleryArr;
     this.currentImageIndex = 0;
     this.lightboxOpen = false;
+    this.activeFilter = 'Signature';
 
     this.galleryGrid = document.getElementById('gallery-grid');
     this.lightbox = document.getElementById('lightbox');
@@ -19,7 +21,8 @@ class Gallery {
   }
 
   init() {
-    this.renderGallery();
+    this.setupFilterEvents();
+    this.filterByTag(this.activeFilter);
     this.setupLightboxEvents();
     this.setupKeyboardEvents();
   }
@@ -36,7 +39,7 @@ class Gallery {
 
     this.galleryGrid.innerHTML = '';
 
-    this.images.forEach((image, index) => {
+    this.filteredImages.forEach((image, index) => {
       const galleryItem = this.createGalleryItem(image, index);
       this.galleryGrid.appendChild(galleryItem);
     });
@@ -78,15 +81,71 @@ class Gallery {
     item.appendChild(info);
 
     // Add click and keyboard event listeners
-    item.addEventListener('click', () => this.openLightbox(index));
+    const originalIndex = this.images.findIndex(img => img.url === image.url);
+    item.addEventListener('click', () => this.openLightbox(index, originalIndex));
     item.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        this.openLightbox(index);
+        this.openLightbox(index, originalIndex);
       }
     });
 
     return item;
+  }
+
+  /**
+   * Sets up filter button event listeners
+   */
+  setupFilterEvents() {
+    const filterButtons = document.querySelectorAll('.filter-btn');
+
+    filterButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const filter = button.getAttribute('data-filter');
+        this.setActiveFilter(button);
+        this.filterByTag(filter);
+      });
+    });
+  }
+
+  /**
+   * Sets the active filter button
+   * @param {HTMLElement} activeButton - The button that was clicked
+   */
+  setActiveFilter(activeButton) {
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    activeButton.classList.add('active');
+    this.activeFilter = activeButton.getAttribute('data-filter');
+  }
+
+  /**
+   * Filters gallery by tag with smooth animation
+   * @param {string} tag - Tag to filter by, or 'all' to show all images
+   */
+  filterByTag(tag) {
+    // Add filtering class for fade out animation
+    this.galleryGrid.classList.add('filtering');
+
+    setTimeout(() => {
+      // Filter the images
+      if (tag === 'all') {
+        this.filteredImages = this.images;
+      } else {
+        this.filteredImages = this.images.filter(image =>
+          image.tags && image.tags.includes(tag)
+        );
+      }
+
+      // Re-render the gallery
+      this.renderGallery();
+
+      // Remove filtering class to fade in new content
+      setTimeout(() => {
+        this.galleryGrid.classList.remove('filtering');
+      }, 50);
+    }, 300);
   }
 
   /**
@@ -140,15 +199,16 @@ class Gallery {
 
   /**
    * Opens the lightbox with the specified image
-   * @param {number} index - Index of the image to display
+   * @param {number} filteredIndex - Index in filtered array
+   * @param {number} originalIndex - Index in original array (optional)
    */
-  openLightbox(index) {
-    if (index < 0 || index >= this.images.length) return;
+  openLightbox(filteredIndex, originalIndex = null) {
+    if (filteredIndex < 0 || filteredIndex >= this.filteredImages.length) return;
 
-    this.currentImageIndex = index;
+    this.currentImageIndex = filteredIndex;
     this.lightboxOpen = true;
 
-    const image = this.images[index];
+    const image = this.filteredImages[filteredIndex];
 
     // Prevent body scroll immediately to avoid flash
     document.body.classList.add('noscroll');
@@ -236,7 +296,7 @@ class Gallery {
    */
   showPreviousImage() {
     const newIndex = this.currentImageIndex === 0
-      ? this.images.length - 1
+      ? this.filteredImages.length - 1
       : this.currentImageIndex - 1;
 
     this.updateLightboxImage(newIndex);
@@ -246,7 +306,7 @@ class Gallery {
    * Shows the next image in the lightbox
    */
   showNextImage() {
-    const newIndex = this.currentImageIndex === this.images.length - 1
+    const newIndex = this.currentImageIndex === this.filteredImages.length - 1
       ? 0
       : this.currentImageIndex + 1;
 
@@ -258,21 +318,21 @@ class Gallery {
    * @param {number} index - Index of the new image
    */
   updateLightboxImage(index) {
-    if (index < 0 || index >= this.images.length) return;
+    if (index < 0 || index >= this.filteredImages.length) return;
 
     const previousIndex = this.currentImageIndex;
-    const image = this.images[index];
+    const image = this.filteredImages[index];
 
     // Determine slide direction based on navigation
     let direction;
-    if (index > previousIndex || (previousIndex === this.images.length - 1 && index === 0)) {
+    if (index > previousIndex || (previousIndex === this.filteredImages.length - 1 && index === 0)) {
       direction = 'next'; // Going forward (or wrapping from last to first)
     } else {
       direction = 'prev'; // Going backward (or wrapping from first to last)
     }
 
     // Handle wrap-around cases
-    if (previousIndex === 0 && index === this.images.length - 1) {
+    if (previousIndex === 0 && index === this.filteredImages.length - 1) {
       direction = 'prev'; // Wrapped backward
     }
 
