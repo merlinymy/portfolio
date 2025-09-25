@@ -229,11 +229,11 @@ h1 {
   transform: scale(0.95);
 }
 
-/* Material icon styling */
-.menu-icon .material-symbols-outlined,
-.close-icon .material-symbols-outlined {
-  font-size: 1.75rem;
-  font-weight: 400;
+/* SVG icon styling */
+.menu-icon svg,
+.close-icon svg {
+  width: 1.75rem;
+  height: 1.75rem;
 }
 
 /* Enhanced keyboard focus for menu buttons */

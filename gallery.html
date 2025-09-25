@@ -42,10 +42,6 @@
       href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&family=Space+Grotesk:wght@300..700&display=swap"
       rel="stylesheet"
     />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
-      rel="stylesheet"
-    />
     <script src="./scripts/menupop.js" type="module"></script>
     <script src="./scripts/gallery.js" type="module"></script>
   </head>
@@ -72,10 +68,14 @@
         </ul>
       </div>
       <button class="menu-icon" aria-label="Open main menu" aria-expanded="false" aria-controls="mobile-menu">
-        <span class="material-symbols-outlined">menu</span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" fill="currentColor"/>
+        </svg>
       </button>
       <button class="close-icon hidden" aria-label="Close main menu" aria-expanded="true" aria-controls="mobile-menu">
-        <span class="material-symbols-outlined">close</span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+        </svg>
       </button>
     </header>
 
@@ -120,7 +120,9 @@
             <span id="carousel-current">1</span> / <span id="carousel-total">1</span>
           </div>
           <button class="carousel-close" aria-label="Close carousel">
-            <span class="material-symbols-outlined">close</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+            </svg>
           </button>
         </div>
 
@@ -128,7 +130,9 @@
         <div class="carousel-content">
           <!-- Navigation -->
           <button class="carousel-nav carousel-nav-prev" aria-label="Previous image">
-            <span class="material-symbols-outlined">chevron_left</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor"/>
+            </svg>
           </button>
 
           <!-- Image Display -->
@@ -142,7 +146,9 @@
           </div>
 
           <button class="carousel-nav carousel-nav-next" aria-label="Next image">
-            <span class="material-symbols-outlined">chevron_right</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="currentColor"/>
+            </svg>
           </button>
         </div>
 
@@ -165,7 +171,9 @@
 
     <!-- Back to Top Button -->
     <button id="back-to-top" class="back-to-top hidden" aria-label="Back to top">
-      <span class="material-symbols-outlined">keyboard_arrow_up</span>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z" fill="currentColor"/>
+      </svg>
     </button>
 
     <footer class="footer">

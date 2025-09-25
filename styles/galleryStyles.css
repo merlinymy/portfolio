@@ -450,9 +450,9 @@
   right: 20px;
 }
 
-.carousel-nav .material-symbols-outlined {
-  font-size: 28px;
-  line-height: 1;
+.carousel-nav svg {
+  width: 28px;
+  height: 28px;
 }
 
 /* Footer */
@@ -603,8 +603,9 @@
     right: 10px;
   }
 
-  .carousel-nav .material-symbols-outlined {
-    font-size: 24px;
+  .carousel-nav svg {
+    width: 24px;
+    height: 24px;
   }
 
   .carousel-footer {
@@ -648,8 +649,9 @@
     height: 44px;
   }
 
-  .carousel-nav .material-symbols-outlined {
-    font-size: 20px;
+  .carousel-nav svg {
+    width: 20px;
+    height: 20px;
   }
 
   .carousel-footer {
@@ -757,9 +759,9 @@
   outline-offset: 2px;
 }
 
-.back-to-top .material-symbols-outlined {
-  font-size: 24px;
-  line-height: 1;
+.back-to-top svg {
+  width: 24px;
+  height: 24px;
 }
 
 /* Mobile adjustments for back to top */
@@ -771,8 +773,9 @@
     height: 50px;
   }
 
-  .back-to-top .material-symbols-outlined {
-    font-size: 20px;
+  .back-to-top svg {
+    width: 20px;
+    height: 20px;
   }
 }
 
