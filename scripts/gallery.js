@@ -11,6 +11,7 @@ class Gallery {
     this.currentImageIndex = 0;
     this.lightboxOpen = false;
     this.activeFilter = 'Signature';
+    this.scrollPosition = 0;
 
     this.galleryGrid = document.getElementById('gallery-grid');
     this.lightbox = document.getElementById('lightbox');
@@ -215,7 +216,7 @@ class Gallery {
     const image = this.filteredImages[filteredIndex];
 
     // Prevent body scroll immediately
-    document.body.classList.add('noscroll');
+    this.disableScroll();
 
     // Generate thumbnails
     this.generateThumbnails();
@@ -256,7 +257,7 @@ class Gallery {
     this.lightbox.setAttribute('aria-hidden', 'true');
 
     // Re-enable body scroll
-    document.body.classList.remove('noscroll');
+    this.enableScroll();
 
     // Return focus to the gallery item that was clicked
     const galleryItems = document.querySelectorAll('.gallery-item');
@@ -433,6 +434,30 @@ class Gallery {
         thumbnail.classList.remove('active');
       }
     });
+  }
+
+  /**
+   * Disables scrolling on mobile devices properly
+   */
+  disableScroll() {
+    // Store current scroll position
+    this.scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+
+    // Apply noscroll class and set top position to prevent jump
+    document.body.style.top = `-${this.scrollPosition}px`;
+    document.body.classList.add('noscroll');
+  }
+
+  /**
+   * Re-enables scrolling and restores position
+   */
+  enableScroll() {
+    // Remove noscroll class
+    document.body.classList.remove('noscroll');
+    document.body.style.top = '';
+
+    // Restore scroll position
+    window.scrollTo(0, this.scrollPosition);
   }
 
   /**
