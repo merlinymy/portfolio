@@ -73,13 +73,13 @@ export const galleryArr = [
   },
   {
     url: "./assets/gallery_web/bigsur2.webp",
-    title: "Solitary Rock at Big Sur Coastline",
+    name: "Solitary Rock at Big Sur Coastline",
     alt: "A lone rocky outcrop stands surrounded by the bright blue waters of Big Sur’s Pacific coast, California, 2019.",
     tags: ["Landscape"],
   },
   {
     url: "./assets/gallery_web/bigsur3.webp",
-    title: "Misty Cliffs of Big Sur",
+    name: "Misty Cliffs of Big Sur",
     alt: "Rolling coastal cliffs meet the Pacific Ocean along California’s Big Sur, bathed in soft mist, 2019.",
     tags: ["Landscape"],
   },
