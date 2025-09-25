@@ -122,6 +122,13 @@ header p {
   cursor: pointer;
 }
 
+/* Logo/home link focus styling */
+header a:focus-visible {
+  outline: 2px solid var(--prime-theme);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
 h1 {
   font-family: var(--font-h1);
   font-weight: 800;
@@ -155,6 +162,29 @@ h1 {
   transition: all 350ms;
 }
 
+/* Keyboard navigation focus styles */
+.nav-items a:focus-visible {
+  outline: 2px solid var(--prime-theme);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+.nav-items li:has(a:focus-visible) {
+  background-color: var(--prime-theme);
+  background-clip: text;
+  color: transparent;
+}
+
+/* Fallback for browsers without :has() support */
+@supports not (selector(:has(*))) {
+  .nav-items a:focus-visible {
+    background-color: var(--prime-theme);
+    background-clip: text;
+    color: transparent;
+    border-radius: 6px;
+  }
+}
+
 /* Mobile menu buttons */
 .menu-icon,
 .close-icon {
@@ -163,24 +193,46 @@ h1 {
   background: none;
   border: none;
   color: var(--hakuji);
-  font-size: 1.5rem;
+  font-size: 2rem;
   cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 4px;
-  transition: all 0.2s ease;
+  padding: 0.75rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
   display: block;
+  z-index: 11;
 }
 
 .menu-icon:hover,
 .close-icon:hover {
-  background: rgba(252, 126, 32, 0.1);
+  background: rgba(252, 126, 32, 0.15);
   color: var(--prime-theme);
+  transform: scale(1.05);
 }
 
 .menu-icon:focus-visible,
 .close-icon:focus-visible {
   outline: 2px solid var(--prime-theme);
   outline-offset: 2px;
+}
+
+.menu-icon:active,
+.close-icon:active {
+  transform: scale(0.95);
+}
+
+/* Material icon styling */
+.menu-icon .material-symbols-outlined,
+.close-icon .material-symbols-outlined {
+  font-size: 1.75rem;
+  font-weight: 400;
+}
+
+/* Enhanced keyboard focus for menu buttons */
+.menu-icon:focus-visible,
+.close-icon:focus-visible {
+  outline: 3px solid var(--prime-theme);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 1px var(--bg), 0 0 8px var(--prime-theme);
 }
 
 .hidden {
@@ -255,6 +307,12 @@ h1 {
   transition: all 300ms;
 }
 
+.download-resume:focus-visible {
+  outline: 2px solid var(--prime-theme);
+  outline-offset: 3px;
+  box-shadow: 0px 0px 15px var(--soshoku), 0 0 8px var(--prime-theme);
+}
+
 .social-info {
   display: flex;
   justify-content: center;
@@ -277,6 +335,16 @@ a {
   border-radius: 5px;
   box-shadow: 0px 0px 15px var(--soshoku);
   transition: all 300ms;
+}
+
+.social-info a:focus-visible {
+  outline: 2px solid var(--prime-theme);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.social-info a:focus-visible svg {
+  box-shadow: 0px 0px 15px var(--soshoku);
 }
 
 .webgl {
@@ -352,6 +420,15 @@ a {
   transition: all 350ms;
 }
 
+.project-card:focus-visible {
+  outline: 2px solid var(--prime-theme);
+  outline-offset: 4px;
+  border: 1px solid var(--prime-theme);
+  box-shadow:
+    0px 0px 20px var(--prime-theme),
+    inset 0px 0px 20px var(--prime-theme);
+}
+
 .project-img-wrap {
   height: 20rem;
   overflow: hidden;
@@ -406,15 +483,21 @@ a {
   width: 100%;
   border-radius: 5px;
   cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.project-links > a {
-  text-align: center;
-  border: 1px solid white;
-  padding: 0.5rem 0rem;
-  width: 100%;
-  border-radius: 5px;
-  cursor: pointer;
+.project-links > a:hover {
+  background-color: var(--prime-theme);
+  border-color: var(--prime-theme);
+  color: var(--bg);
+}
+
+.project-links > a:focus-visible {
+  outline: 2px solid var(--prime-theme);
+  outline-offset: 3px;
+  background-color: var(--prime-theme);
+  border-color: var(--prime-theme);
+  color: var(--bg);
 }
 
 @media (max-width: 768px) {
@@ -441,6 +524,11 @@ a {
   /* Show desktop navigation */
   .nav-bar {
     display: block !important;
+  }
+
+  /* Hide mobile dropdown on desktop */
+  .dropdown {
+    display: none !important;
   }
 }
 
@@ -479,6 +567,15 @@ a {
     0px 0px 20px var(--prime-theme),
     inset 0px 0px 20px var(--prime-theme);
   transition: all 350ms;
+}
+
+.skill-card:focus-visible {
+  outline: 2px solid var(--prime-theme);
+  outline-offset: 4px;
+  border: 1px solid var(--prime-theme);
+  box-shadow:
+    0px 0px 20px var(--prime-theme),
+    inset 0px 0px 20px var(--prime-theme);
 }
 
 /* section title inside the card */

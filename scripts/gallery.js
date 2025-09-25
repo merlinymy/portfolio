@@ -22,6 +22,7 @@ class Gallery {
     this.thumbnailsContainer = document.getElementById("thumbnails-container");
     this.carouselDescription = document.getElementById("carousel-description");
     this.backToTopBtn = document.getElementById("back-to-top");
+    this.galleryStatus = document.getElementById("gallery-status");
 
     this.init();
   }
@@ -124,8 +125,10 @@ class Gallery {
   setActiveFilter(activeButton) {
     document.querySelectorAll(".filter-btn").forEach((btn) => {
       btn.classList.remove("active");
+      btn.setAttribute("aria-pressed", "false");
     });
     activeButton.classList.add("active");
+    activeButton.setAttribute("aria-pressed", "true");
     this.activeFilter = activeButton.getAttribute("data-filter");
   }
 
@@ -149,6 +152,13 @@ class Gallery {
 
       // Re-render the gallery
       this.renderGallery();
+
+      // Update status for screen readers
+      if (this.galleryStatus) {
+        const filterName = tag === "all" ? "All images" : tag;
+        const count = this.filteredImages.length;
+        this.galleryStatus.textContent = `Showing ${count} image${count !== 1 ? "s" : ""} in ${filterName} category`;
+      }
 
       // Remove filtering class to fade in new content
       setTimeout(() => {

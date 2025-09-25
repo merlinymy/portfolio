@@ -1,6 +1,9 @@
 const createProjectCard = (project) => {
   const projectCard = document.createElement("div");
   projectCard.classList.add("project-card");
+  projectCard.setAttribute("tabindex", "0");
+  projectCard.setAttribute("role", "region");
+  projectCard.setAttribute("aria-labelledby", `project-title-${project.name.replace(/\s+/g, '-').toLowerCase()}`);
 
   const imgWrap = document.createElement("div");
   imgWrap.classList.add("project-img-wrap");
@@ -16,6 +19,7 @@ const createProjectCard = (project) => {
   const projectTitle = document.createElement("h3");
   projectTitle.textContent = project.name;
   projectTitle.classList.add("project-title");
+  projectTitle.setAttribute("id", `project-title-${project.name.replace(/\s+/g, '-').toLowerCase()}`);
 
   const projectDesc = document.createElement("p");
   projectDesc.textContent = project.desc;

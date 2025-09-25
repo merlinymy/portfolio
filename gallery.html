@@ -51,31 +51,35 @@
   </head>
 
   <body>
-    <header>
-      <a href="/"><p>MY</p></a>
-      <nav class="nav-bar hidden">
+    <header id="navigation">
+      <a href="/" aria-label="Merlin Yang - Home"><p>MY</p></a>
+      <nav class="nav-bar hidden" aria-label="Main navigation">
         <ul class="nav-items">
           <li><a href="/#project-sec">Projects</a></li>
           <li><a href="/#skill-sec">Skills</a></li>
-          <li><a href="gallery.html">Gallery</a></li>
+          <li><a href="gallery.html" aria-current="page">Gallery</a></li>
           <li><a href="about.html">About</a></li>
           <li><a href="about.html#connect">Connect</a></li>
         </ul>
       </nav>
-      <div class="dropdown hidden">
+      <div class="dropdown hidden" aria-label="Mobile navigation" id="mobile-menu">
         <ul class="nav-items">
           <li><a href="/#project-sec">Projects</a></li>
           <li><a href="/#skill-sec">Skills</a></li>
-          <li><a href="gallery.html">Gallery</a></li>
+          <li><a href="gallery.html" aria-current="page">Gallery</a></li>
           <li><a href="about.html">About</a></li>
           <li><a href="about.html#connect">Connect</a></li>
         </ul>
       </div>
-      <span class="material-symbols-outlined menu-icon">menu</span>
-      <span class="material-symbols-outlined close-icon hidden">close</span>
+      <button class="menu-icon" aria-label="Open main menu" aria-expanded="false" aria-controls="mobile-menu">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+      <button class="close-icon hidden" aria-label="Close main menu" aria-expanded="true" aria-controls="mobile-menu">
+        <span class="material-symbols-outlined">close</span>
+      </button>
     </header>
 
-    <main class="gallery-page">
+    <main class="gallery-page" id="main-content">
       <section class="gallery-hero">
         <h1>Photography Gallery</h1>
         <p>
@@ -83,20 +87,24 @@
         </p>
       </section>
 
-      <section class="gallery-filters">
-        <div class="filter-buttons">
-          <button class="filter-btn active" data-filter="Signature">Signature</button>
-          <button class="filter-btn" data-filter="all">All</button>
-          <button class="filter-btn" data-filter="Landscape">Landscape</button>
-          <button class="filter-btn" data-filter="Night Sky">Night Sky</button>
-          <button class="filter-btn" data-filter="Wildlife">Wildlife</button>
-          <button class="filter-btn" data-filter="People & Culture">People & Culture</button>
+      <section class="gallery-filters" aria-label="Filter gallery by category">
+        <h2 class="visually-hidden">Filter Gallery</h2>
+        <div class="filter-buttons" role="group" aria-label="Gallery filter options">
+          <button class="filter-btn active" data-filter="Signature" aria-pressed="true">Signature</button>
+          <button class="filter-btn" data-filter="all" aria-pressed="false">All</button>
+          <button class="filter-btn" data-filter="Landscape" aria-pressed="false">Landscape</button>
+          <button class="filter-btn" data-filter="Night Sky" aria-pressed="false">Night Sky</button>
+          <button class="filter-btn" data-filter="Wildlife" aria-pressed="false">Wildlife</button>
+          <button class="filter-btn" data-filter="People & Culture" aria-pressed="false">People & Culture</button>
         </div>
       </section>
 
       <section class="gallery-container">
-        <div id="gallery-grid" class="gallery-grid">
+        <div id="gallery-grid" class="gallery-grid" role="group" aria-label="Photography gallery">
           <!-- Gallery items will be dynamically inserted here -->
+        </div>
+        <div id="gallery-status" class="visually-hidden" aria-live="polite" aria-atomic="true">
+          <!-- Status updates for screen readers -->
         </div>
       </section>
     </main>
