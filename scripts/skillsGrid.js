@@ -3,11 +3,17 @@ const buildSkillCard = (skillSet) => {
   skillsCard.classList.add("skill-card");
   skillsCard.setAttribute("tabindex", "0");
   skillsCard.setAttribute("role", "region");
-  skillsCard.setAttribute("aria-labelledby", `skill-title-${skillSet.group.replace(/\s+/g, '-').toLowerCase()}`);
+  skillsCard.setAttribute(
+    "aria-labelledby",
+    `skill-title-${skillSet.group.replace(/\s+/g, "-").toLowerCase()}`
+  );
   const cardTitle = document.createElement("h3");
   cardTitle.classList.add("card-title");
   cardTitle.textContent = skillSet.group;
-  cardTitle.setAttribute("id", `skill-title-${skillSet.group.replace(/\s+/g, '-').toLowerCase()}`);
+  cardTitle.setAttribute(
+    "id",
+    `skill-title-${skillSet.group.replace(/\s+/g, "-").toLowerCase()}`
+  );
   const skCardsContainer = document.createElement("div");
   skCardsContainer.classList.add("sk-container");
   skillSet.skills.map((skill) => {

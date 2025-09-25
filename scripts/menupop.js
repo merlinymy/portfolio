@@ -67,10 +67,12 @@ document.addEventListener("keydown", (e) => {
 
 // Close menu when clicking outside
 document.addEventListener("click", (e) => {
-  if (!popupMenu.classList.contains("hidden") &&
-      !popupMenu.contains(e.target) &&
-      !menuBtn.contains(e.target) &&
-      !closeBtn.contains(e.target)) {
+  if (
+    !popupMenu.classList.contains("hidden") &&
+    !popupMenu.contains(e.target) &&
+    !menuBtn.contains(e.target) &&
+    !closeBtn.contains(e.target)
+  ) {
     toggleMenu();
   }
 });

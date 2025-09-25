@@ -89,14 +89,11 @@ class Gallery {
     item.appendChild(info);
 
     // Add click and keyboard event listeners
-    const originalIndex = this.images.findIndex((img) => img.url === image.url);
-    item.addEventListener("click", () =>
-      this.openLightbox(index, originalIndex)
-    );
+    item.addEventListener("click", () => this.openLightbox(index));
     item.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        this.openLightbox(index, originalIndex);
+        this.openLightbox(index);
       }
     });
 
@@ -133,6 +130,20 @@ class Gallery {
   }
 
   /**
+   * Shuffles an array using Fisher-Yates algorithm
+   * @param {Array} array - Array to shuffle
+   * @returns {Array} Shuffled copy of the array
+   */
+  shuffleArray(array) {
+    const shuffled = [...array]; // Create a copy to avoid mutating original
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
+  /**
    * Filters gallery by tag with smooth animation
    * @param {string} tag - Tag to filter by, or 'all' to show all images
    */
@@ -148,6 +159,11 @@ class Gallery {
         this.filteredImages = this.images.filter(
           (image) => image.tags && image.tags.includes(tag)
         );
+      }
+
+      // Randomize order for all categories except "Signature"
+      if (tag !== "Signature") {
+        this.filteredImages = this.shuffleArray(this.filteredImages);
       }
 
       // Re-render the gallery
@@ -219,9 +235,8 @@ class Gallery {
   /**
    * Opens the carousel with the specified image
    * @param {number} filteredIndex - Index in filtered array
-   * @param {number} originalIndex - Index in original array (optional)
    */
-  openLightbox(filteredIndex, originalIndex = null) {
+  openLightbox(filteredIndex) {
     if (filteredIndex < 0 || filteredIndex >= this.filteredImages.length)
       return;
 
@@ -274,10 +289,10 @@ class Gallery {
     // Re-enable body scroll
     this.enableScroll();
 
-    // Return focus to the gallery item that was clicked
+    // Return focus to the gallery item that was clicked without scrolling
     const galleryItems = document.querySelectorAll(".gallery-item");
     if (galleryItems[this.currentImageIndex]) {
-      galleryItems[this.currentImageIndex].focus();
+      galleryItems[this.currentImageIndex].focus({ preventScroll: true });
     }
   }
 
@@ -482,8 +497,11 @@ class Gallery {
     document.body.classList.remove("noscroll");
     document.body.style.top = "";
 
-    // Restore scroll position
-    window.scrollTo(0, this.scrollPosition);
+    // Restore scroll position with smooth behavior
+    window.scrollTo({
+      top: this.scrollPosition,
+      behavior: "instant"
+    });
   }
 
   /**

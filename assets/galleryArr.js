@@ -1,5 +1,41 @@
 export const galleryArr = [
   {
+    url: "./assets/gallery_web/bird5.webp",
+    name: "Western Scrub-Jay in Flight, Pinnacles National Park, 2020",
+    alt: "Close-up of a Western Scrub-Jay with vibrant blue wings spread wide, perched on a rock and ready to take flight at Pinnacles National Park in 2020.",
+    tags: ["Wildlife", "Signature"],
+  },
+  {
+    url: "./assets/gallery_web/rainbow.webp",
+    name: "Infrared Rainbow Scene, Mammoth Lakes, 2021",
+    alt: "Rainbow cutting through stormy skies with surreal tones due to infrared photography.",
+    tags: ["Landscape", "Signature"],
+  },
+  {
+    url: "./assets/gallery_web/chicago.webp",
+    name: "Chicago Skyline, 2019",
+    alt: "Night view of downtown Chicago with skyscrapers illuminated against a deep blue sky.",
+    tags: ["Landscape", "Signature"],
+  },
+  {
+    url: "./assets/gallery_web/yellowStone2.webp",
+    name: "Microbial Mat Textures, Yellowstone, 2021",
+    alt: "Close-up of microbial mats in Yellowstone with orange and purple striations.",
+    tags: ["Landscape", "Signature"],
+  },
+  {
+    url: "./assets/gallery_web/aurora_selfie.webp",
+    name: "Aurora Over Lake Shore, Sister Bay, 2024",
+    alt: "Me and my partner standing on a lakeshore at night beneath vivid aurora curtains reflected on the calm water.",
+    tags: ["Night Sky", "People & Culture", "Signature"],
+  },
+  {
+    url: "./assets/gallery_web/phainopepla.webp",
+    name: "Phainopepla on Desert Branch, Joshua Tree, 2024",
+    alt: "Dark crested bird perched on thorny desert twigs.",
+    tags: ["Wildlife", "Signature"],
+  },
+  {
     url: "./assets/gallery_web/AL.webp",
     name: "Marine Navigational Structures, Alaska, 2017",
     alt: "Two weathered navigational platforms rise from the sea with distant mountains under a clear sky.",
@@ -36,10 +72,40 @@ export const galleryArr = [
     tags: ["Night Sky", "Landscape"],
   },
   {
+    filename: "bigsur2.webp",
+    title: "Solitary Rock at Big Sur Coastline",
+    alt: "A lone rocky outcrop stands surrounded by the bright blue waters of Big Sur’s Pacific coast, California, 2019.",
+    tags: ["Landscape"],
+  },
+  {
+    filename: "bigsur3.webp",
+    title: "Misty Cliffs of Big Sur",
+    alt: "Rolling coastal cliffs meet the Pacific Ocean along California’s Big Sur, bathed in soft mist, 2019.",
+    tags: ["Landscape"],
+  },
+  {
+    url: "./assets/gallery_web/bird3.webp",
+    name: "California Condor Silhouette, Pinnacles National Park, 2021",
+    alt: "A California condor captured in dramatic silhouette, perched against a pale evening sky in Pinnacles National Park, 2021.",
+    tags: ["Wildlife", "Signature"],
+  },
+  {
     url: "./assets/gallery_web/arora2.webp",
     name: "Aurora with Stars, Sister Bay, 2024",
     alt: "Vivid aurora lights illuminating the night sky with countless stars visible.",
     tags: ["Night Sky"],
+  },
+  {
+    url: "./assets/gallery_web/bird4.webp",
+    name: "Pelican Dive, Santa Cruz, 2020",
+    alt: "A brown pelican captured mid-dive, wings tucked as it plunges toward the ocean surface off the coast of Santa Cruz in 2020.",
+    tags: ["Wildlife"],
+  },
+  {
+    url: "./assets/gallery_web/bismuth.webp",
+    name: "Bismuth Crystal Formation, San Jose, 2020",
+    alt: "A close-up of a bismuth crystal displaying its staircase-like geometric structure with shimmering hues of gold, green, and purple, photographed in San Jose in 2020.",
+    tags: ["People & Culture"],
   },
   {
     url: "./assets/gallery_web/arora3.webp",
@@ -48,17 +114,60 @@ export const galleryArr = [
     tags: ["Night Sky", "Landscape"],
   },
   {
+    url: "./assets/gallery_web/bloodmoon.webp",
+    name: "Blood Moon Eclipse, San Jose, 2022",
+    alt: "A deep red-hued blood moon captured during a total lunar eclipse against the black night sky, photographed from San Jose in 2022.",
+    tags: ["Night Sky"],
+  },
+  {
+    url: "./assets/gallery_web/milky2.webp",
+    name: "Milky Way over Santa Cruz, 2018",
+    alt: "A brilliant view of the Milky Way arching across the night sky above silhouetted trees in Santa Cruz, captured in 2018.",
+    tags: ["Night Sky", "Signature"],
+  },
+  {
     url: "./assets/gallery_web/astro1.webp",
     name: "Milky Way Core, San Jose, 2020",
     alt: "Dense star field showing the Milky Way’s galactic core with visible dust lanes and glowing nebulae.",
     tags: ["Night Sky", "Signature"],
   },
   {
-    url: "./assets/gallery_web/aurora_selfie.webp",
-    name: "Aurora Over Lake Shore, Sister Bay, 2024",
-    alt: "Me and my partner standing on a lakeshore at night beneath vivid aurora curtains reflected on the calm water.",
-    tags: ["Night Sky", "People & Culture", "Signature"],
+    url: "./assets/gallery_web/milky3.webp",
+    name: "Milky Way over Santa Cruz Lights, 2018",
+    alt: "The Milky Way stretching across the sky above the glowing city lights of Santa Cruz, captured in 2018.",
+    tags: ["Night Sky", "Signature"],
   },
+  {
+    url: "./assets/gallery_web/neowise.webp",
+    name: "Comet NEOWISE Over San Jose, 2020",
+    alt: "Comet NEOWISE streaking across the night sky above San Jose, captured in 2020.",
+    tags: ["Night Sky"],
+  },
+  {
+    url: "./assets/gallery_web/sunset.webp",
+    name: "Sunset Gathering, San Jose, 2020",
+    alt: "Silhouetted figures gather under a dramatic golden sunset sky with layered clouds above San Jose in 2020.",
+    tags: ["People & Culture", "Landscape", "Signature"],
+  },
+  {
+    url: "./assets/gallery_web/tree.webp",
+    name: "Rain-Kissed Pines, Yellowstone, 2021",
+    alt: "Close-up of pine needles and cones glistening with raindrops in Yellowstone National Park, 2021.",
+    tags: ["Landscape"],
+  },
+  {
+    url: "./assets/gallery_web/valley.webp",
+    name: "High Marsh Trail, Santa Cruz Mountains, 2021",
+    alt: "Trail marker for High Marsh Trail with a view of the forested Santa Cruz Mountains and rolling hills in the distance, 2021.",
+    tags: ["Landscape", "People & Culture"],
+  },
+  {
+    url: "./assets/gallery_web/yellowstone5.webp",
+    name: "Yellowstone Meadow, 2021",
+    alt: "Wide view of a green meadow with forested hills and dramatic shadows in Yellowstone National Park, 2021.",
+    tags: ["Landscape"],
+  },
+
   {
     url: "./assets/gallery_web/birdInSnow.webp",
     name: "Bird in Snow, Chicago, 2023",
@@ -71,12 +180,7 @@ export const galleryArr = [
     alt: "Close-up of a burnt tree trunk with dark, cracked bark.",
     tags: ["Landscape", "Signature"],
   },
-  {
-    url: "./assets/gallery_web/chicago.webp",
-    name: "Chicago Skyline, 2019",
-    alt: "Night view of downtown Chicago with skyscrapers illuminated against a deep blue sky.",
-    tags: ["Landscape", "Signature"],
-  },
+
   {
     url: "./assets/gallery_web/chicago2.webp",
     name: "Chicago Skyline Panorama, 2019",
@@ -185,24 +289,14 @@ export const galleryArr = [
     alt: "Large coastal rock arch rising from the ocean.",
     tags: ["Landscape"],
   },
-  {
-    url: "./assets/gallery_web/phainopepla.webp",
-    name: "Phainopepla on Desert Branch, Joshua Tree, 2024",
-    alt: "Dark crested bird perched on thorny desert twigs.",
-    tags: ["Wildlife", "Signature"],
-  },
+
   {
     url: "./assets/gallery_web/plant1.webp",
     name: "Yucca Spines at Sunset, Joshua Tree, 2024",
     alt: "Close-up of yucca plant leaves backlit by warm evening light.",
     tags: ["Landscape"],
   },
-  {
-    url: "./assets/gallery_web/rainbow.webp",
-    name: "Infrared Rainbow Scene, Mammoth Lakes, 2021",
-    alt: "Rainbow cutting through stormy skies with surreal tones due to infrared photography.",
-    tags: ["Landscape", "Signature"],
-  },
+
   {
     url: "./assets/gallery_web/rainbow2.webp",
     name: "Rainbow over Sierra Nevada, Mammoth Lakes, 2021",
@@ -239,12 +333,7 @@ export const galleryArr = [
     alt: "Vivid geothermal pool with turquoise and rust-colored microbial mats.",
     tags: ["Landscape"],
   },
-  {
-    url: "./assets/gallery_web/yellowStone2.webp",
-    name: "Microbial Mat Textures, Yellowstone, 2021",
-    alt: "Close-up of microbial mats in Yellowstone with orange and purple striations.",
-    tags: ["Landscape", "Signature"],
-  },
+
   {
     url: "./assets/gallery_web/yellowStoneDeer.webp",
     name: "Elk Resting in Summer Meadow, Yellowstone, 2021",
