@@ -2,7 +2,7 @@ export const galleryArr = [
   {
     url: "./assets/gallery_web/bird5.webp",
     name: "Western Scrub-Jay in Flight, Pinnacles National Park, 2020",
-    alt: "Close-up of a Western Scrub-Jay with vibrant blue wings spread wide, perched on a rock and ready to take flight at Pinnacles National Park in 2020.",
+    alt: "Close-up of a Western Scrub-Jay with vibrant blue wings spread wide, ready to take flight.",
     tags: ["Wildlife", "Signature"],
   },
   {
@@ -73,20 +73,20 @@ export const galleryArr = [
   },
   {
     url: "./assets/gallery_web/bigsur2.webp",
-    name: "Solitary Rock at Big Sur Coastline",
-    alt: "A lone rocky outcrop stands surrounded by the bright blue waters of Big Sur’s Pacific coast, California, 2019.",
+    name: "Solitary Rock at Big Sur Coastline, Big Sur, 2019",
+    alt: "A lone rocky outcrop stands surrounded by the bright blue waters.",
     tags: ["Landscape"],
   },
   {
     url: "./assets/gallery_web/bigsur3.webp",
-    name: "Misty Cliffs of Big Sur",
-    alt: "Rolling coastal cliffs meet the Pacific Ocean along California’s Big Sur, bathed in soft mist, 2019.",
+    name: "Misty Cliffs of Big Sur, 2019",
+    alt: "Rolling coastal cliffs meet the Pacific Ocean.",
     tags: ["Landscape"],
   },
   {
     url: "./assets/gallery_web/bird3.webp",
     name: "California Condor Silhouette, Pinnacles National Park, 2021",
-    alt: "A California condor captured in dramatic silhouette, perched against a pale evening sky in Pinnacles National Park, 2021.",
+    alt: "A California condor captured in dramatic silhouette, perched against a pale evening sky.",
     tags: ["Wildlife", "Signature"],
   },
   {
@@ -98,13 +98,13 @@ export const galleryArr = [
   {
     url: "./assets/gallery_web/bird4.webp",
     name: "Pelican Dive, Santa Cruz, 2020",
-    alt: "A brown pelican captured mid-dive, wings tucked as it plunges toward the ocean surface off the coast of Santa Cruz in 2020.",
+    alt: "A brown pelican captured mid-dive, wings tucked as it plunges toward the ocean surface.",
     tags: ["Wildlife"],
   },
   {
     url: "./assets/gallery_web/bismuth.webp",
     name: "Bismuth Crystal Formation, San Jose, 2020",
-    alt: "A close-up of a bismuth crystal displaying its staircase-like geometric structure with shimmering hues of gold, green, and purple, photographed in San Jose in 2020.",
+    alt: "A close-up of a bismuth crystal displaying its staircase-like geometric structure with shimmering hues.",
     tags: ["People & Culture"],
   },
   {
@@ -116,13 +116,13 @@ export const galleryArr = [
   {
     url: "./assets/gallery_web/bloodmoon.webp",
     name: "Blood Moon Eclipse, San Jose, 2022",
-    alt: "A deep red-hued blood moon captured during a total lunar eclipse against the black night sky, photographed from San Jose in 2022.",
+    alt: "A deep red-hued blood moon.",
     tags: ["Night Sky"],
   },
   {
     url: "./assets/gallery_web/milky2.webp",
     name: "Milky Way over Santa Cruz, 2018",
-    alt: "A brilliant view of the Milky Way arching across the night sky above silhouetted trees in Santa Cruz, captured in 2018.",
+    alt: "A brilliant view of the Milky Way arching across the night sky above silhouetted trees.",
     tags: ["Night Sky", "Signature"],
   },
   {
@@ -134,37 +134,37 @@ export const galleryArr = [
   {
     url: "./assets/gallery_web/milky3.webp",
     name: "Milky Way over Santa Cruz Lights, 2018",
-    alt: "The Milky Way stretching across the sky above the glowing city lights of Santa Cruz, captured in 2018.",
+    alt: "The Milky Way stretching across the sky above the glowing city lights of Santa Cruz.",
     tags: ["Night Sky", "Signature"],
   },
   {
     url: "./assets/gallery_web/neowise.webp",
     name: "Comet NEOWISE Over San Jose, 2020",
-    alt: "Comet NEOWISE streaking across the night sky above San Jose, captured in 2020.",
+    alt: "Comet NEOWISE streaking across the night sky above San Jose.",
     tags: ["Night Sky"],
   },
   {
     url: "./assets/gallery_web/sunset.webp",
     name: "Sunset Gathering, San Jose, 2020",
-    alt: "Silhouetted figures gather under a dramatic golden sunset sky with layered clouds above San Jose in 2020.",
+    alt: "Silhouetted figures gather under a dramatic golden sunset sky with layered clouds.",
     tags: ["People & Culture", "Landscape", "Signature"],
   },
   {
     url: "./assets/gallery_web/tree.webp",
     name: "Rain-Kissed Pines, Yellowstone, 2021",
-    alt: "Close-up of pine needles and cones glistening with raindrops in Yellowstone National Park, 2021.",
+    alt: "Close-up of pine needles and cones glistening with raindrops.",
     tags: ["Landscape"],
   },
   {
     url: "./assets/gallery_web/valley.webp",
     name: "High Marsh Trail, Santa Cruz Mountains, 2021",
-    alt: "Trail marker for High Marsh Trail with a view of the forested Santa Cruz Mountains and rolling hills in the distance, 2021.",
+    alt: "Trail marker for High Marsh Trail with a view of the forested Santa Cruz Mountains.",
     tags: ["Landscape", "People & Culture"],
   },
   {
     url: "./assets/gallery_web/yellowstone5.webp",
     name: "Yellowstone Meadow, 2021",
-    alt: "Wide view of a green meadow with forested hills and dramatic shadows in Yellowstone National Park, 2021.",
+    alt: "Wide view of a green meadow with forested hills and dramatic shadows.",
     tags: ["Landscape"],
   },
 
