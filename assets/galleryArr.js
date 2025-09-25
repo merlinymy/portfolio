@@ -56,7 +56,7 @@ export const galleryArr = [
   {
     url: "./assets/gallery_web/aurora_selfie.webp",
     name: "Aurora Over Lake Shore, Sister Bay, 2024",
-    alt: "Two people standing on a lakeshore at night beneath vivid aurora curtains reflected on the calm water.",
+    alt: "Me and my partner standing on a lakeshore at night beneath vivid aurora curtains reflected on the calm water.",
     tags: ["Night Sky", "People & Culture", "Signature"],
   },
   {
