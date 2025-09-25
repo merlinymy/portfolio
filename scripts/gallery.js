@@ -1,4 +1,4 @@
-import { galleryArr } from '../assets/galleryArr.js';
+import { galleryArr } from "../assets/galleryArr.js";
 
 /**
  * Gallery class handles the dynamic rendering and lightbox functionality
@@ -10,18 +10,18 @@ class Gallery {
     this.filteredImages = galleryArr;
     this.currentImageIndex = 0;
     this.lightboxOpen = false;
-    this.activeFilter = 'Signature';
+    this.activeFilter = "Signature";
     this.scrollPosition = 0;
 
-    this.galleryGrid = document.getElementById('gallery-grid');
-    this.lightbox = document.getElementById('lightbox');
-    this.lightboxImage = document.getElementById('lightbox-image');
-    this.lightboxTitle = document.getElementById('lightbox-title');
-    this.carouselCurrent = document.getElementById('carousel-current');
-    this.carouselTotal = document.getElementById('carousel-total');
-    this.thumbnailsContainer = document.getElementById('thumbnails-container');
-    this.carouselDescription = document.getElementById('carousel-description');
-    this.backToTopBtn = document.getElementById('back-to-top');
+    this.galleryGrid = document.getElementById("gallery-grid");
+    this.lightbox = document.getElementById("lightbox");
+    this.lightboxImage = document.getElementById("lightbox-image");
+    this.lightboxTitle = document.getElementById("lightbox-title");
+    this.carouselCurrent = document.getElementById("carousel-current");
+    this.carouselTotal = document.getElementById("carousel-total");
+    this.thumbnailsContainer = document.getElementById("thumbnails-container");
+    this.carouselDescription = document.getElementById("carousel-description");
+    this.backToTopBtn = document.getElementById("back-to-top");
 
     this.init();
   }
@@ -40,11 +40,11 @@ class Gallery {
    */
   renderGallery() {
     if (!this.galleryGrid) {
-      console.error('Gallery grid element not found');
+      console.error("Gallery grid element not found");
       return;
     }
 
-    this.galleryGrid.innerHTML = '';
+    this.galleryGrid.innerHTML = "";
 
     this.filteredImages.forEach((image, index) => {
       const galleryItem = this.createGalleryItem(image, index);
@@ -59,27 +59,27 @@ class Gallery {
    * @returns {HTMLElement} Gallery item element
    */
   createGalleryItem(image, index) {
-    const item = document.createElement('div');
-    item.className = 'gallery-item';
-    item.setAttribute('role', 'button');
-    item.setAttribute('tabindex', '0');
-    item.setAttribute('aria-label', `View image: ${image.name}`);
+    const item = document.createElement("div");
+    item.className = "gallery-item";
+    item.setAttribute("role", "button");
+    item.setAttribute("tabindex", "0");
+    item.setAttribute("aria-label", `View image: ${image.name}`);
 
     // Create image container to maintain aspect ratio
-    const imageContainer = document.createElement('div');
-    imageContainer.className = 'gallery-item-image-container';
+    const imageContainer = document.createElement("div");
+    imageContainer.className = "gallery-item-image-container";
 
-    const img = document.createElement('img');
+    const img = document.createElement("img");
     img.src = image.url;
     img.alt = image.alt;
-    img.className = 'gallery-item-image';
-    img.loading = 'lazy'; // Performance optimization
+    img.className = "gallery-item-image";
+    img.loading = "lazy"; // Performance optimization
 
-    const info = document.createElement('div');
-    info.className = 'gallery-item-info';
+    const info = document.createElement("div");
+    info.className = "gallery-item-info";
 
-    const title = document.createElement('h3');
-    title.className = 'gallery-item-title';
+    const title = document.createElement("h3");
+    title.className = "gallery-item-title";
     title.textContent = image.name;
 
     imageContainer.appendChild(img);
@@ -88,10 +88,12 @@ class Gallery {
     item.appendChild(info);
 
     // Add click and keyboard event listeners
-    const originalIndex = this.images.findIndex(img => img.url === image.url);
-    item.addEventListener('click', () => this.openLightbox(index, originalIndex));
-    item.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
+    const originalIndex = this.images.findIndex((img) => img.url === image.url);
+    item.addEventListener("click", () =>
+      this.openLightbox(index, originalIndex)
+    );
+    item.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         this.openLightbox(index, originalIndex);
       }
@@ -104,11 +106,11 @@ class Gallery {
    * Sets up filter button event listeners
    */
   setupFilterEvents() {
-    const filterButtons = document.querySelectorAll('.filter-btn');
+    const filterButtons = document.querySelectorAll(".filter-btn");
 
-    filterButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        const filter = button.getAttribute('data-filter');
+    filterButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const filter = button.getAttribute("data-filter");
         this.setActiveFilter(button);
         this.filterByTag(filter);
       });
@@ -120,11 +122,11 @@ class Gallery {
    * @param {HTMLElement} activeButton - The button that was clicked
    */
   setActiveFilter(activeButton) {
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.classList.remove('active');
+    document.querySelectorAll(".filter-btn").forEach((btn) => {
+      btn.classList.remove("active");
     });
-    activeButton.classList.add('active');
-    this.activeFilter = activeButton.getAttribute('data-filter');
+    activeButton.classList.add("active");
+    this.activeFilter = activeButton.getAttribute("data-filter");
   }
 
   /**
@@ -133,15 +135,15 @@ class Gallery {
    */
   filterByTag(tag) {
     // Add filtering class for fade out animation
-    this.galleryGrid.classList.add('filtering');
+    this.galleryGrid.classList.add("filtering");
 
     setTimeout(() => {
       // Filter the images
-      if (tag === 'all') {
+      if (tag === "all") {
         this.filteredImages = this.images;
       } else {
-        this.filteredImages = this.images.filter(image =>
-          image.tags && image.tags.includes(tag)
+        this.filteredImages = this.images.filter(
+          (image) => image.tags && image.tags.includes(tag)
         );
       }
 
@@ -150,7 +152,7 @@ class Gallery {
 
       // Remove filtering class to fade in new content
       setTimeout(() => {
-        this.galleryGrid.classList.remove('filtering');
+        this.galleryGrid.classList.remove("filtering");
       }, 50);
     }, 300);
   }
@@ -159,25 +161,25 @@ class Gallery {
    * Sets up carousel event listeners
    */
   setupLightboxEvents() {
-    const closeBtn = document.querySelector('.carousel-close');
-    const prevBtn = document.querySelector('.carousel-nav-prev');
-    const nextBtn = document.querySelector('.carousel-nav-next');
-    const backdrop = document.querySelector('.carousel-backdrop');
+    const closeBtn = document.querySelector(".carousel-close");
+    const prevBtn = document.querySelector(".carousel-nav-prev");
+    const nextBtn = document.querySelector(".carousel-nav-next");
+    const backdrop = document.querySelector(".carousel-backdrop");
 
     if (closeBtn) {
-      closeBtn.addEventListener('click', () => this.closeLightbox());
+      closeBtn.addEventListener("click", () => this.closeLightbox());
     }
 
     if (prevBtn) {
-      prevBtn.addEventListener('click', () => this.showPreviousImage());
+      prevBtn.addEventListener("click", () => this.showPreviousImage());
     }
 
     if (nextBtn) {
-      nextBtn.addEventListener('click', () => this.showNextImage());
+      nextBtn.addEventListener("click", () => this.showNextImage());
     }
 
     if (backdrop) {
-      backdrop.addEventListener('click', () => this.closeLightbox());
+      backdrop.addEventListener("click", () => this.closeLightbox());
     }
   }
 
@@ -185,18 +187,18 @@ class Gallery {
    * Sets up keyboard navigation for lightbox
    */
   setupKeyboardEvents() {
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener("keydown", (e) => {
       if (!this.lightboxOpen) return;
 
       switch (e.key) {
-        case 'Escape':
+        case "Escape":
           this.closeLightbox();
           break;
-        case 'ArrowLeft':
+        case "ArrowLeft":
           e.preventDefault();
           this.showPreviousImage();
           break;
-        case 'ArrowRight':
+        case "ArrowRight":
           e.preventDefault();
           this.showNextImage();
           break;
@@ -210,7 +212,8 @@ class Gallery {
    * @param {number} originalIndex - Index in original array (optional)
    */
   openLightbox(filteredIndex, originalIndex = null) {
-    if (filteredIndex < 0 || filteredIndex >= this.filteredImages.length) return;
+    if (filteredIndex < 0 || filteredIndex >= this.filteredImages.length)
+      return;
 
     this.currentImageIndex = filteredIndex;
     this.lightboxOpen = true;
@@ -227,21 +230,21 @@ class Gallery {
     this.updateCounter();
 
     // Show carousel container
-    this.lightbox.classList.remove('hidden');
-    this.lightbox.setAttribute('aria-hidden', 'false');
+    this.lightbox.classList.remove("hidden");
+    this.lightbox.setAttribute("aria-hidden", "false");
 
     // Set content
     this.lightboxImage.src = image.url;
     this.lightboxImage.alt = image.alt;
     this.lightboxTitle.textContent = image.name;
-    this.carouselDescription.textContent = image.alt || '';
+    this.carouselDescription.textContent = image.alt || "";
 
     // Update active thumbnail
     this.updateActiveThumbnail();
 
     // Focus management for accessibility
     setTimeout(() => {
-      const closeButton = document.querySelector('.carousel-close');
+      const closeButton = document.querySelector(".carousel-close");
       if (closeButton) {
         closeButton.focus();
       }
@@ -255,14 +258,14 @@ class Gallery {
     this.lightboxOpen = false;
 
     // Hide carousel
-    this.lightbox.classList.add('hidden');
-    this.lightbox.setAttribute('aria-hidden', 'true');
+    this.lightbox.classList.add("hidden");
+    this.lightbox.setAttribute("aria-hidden", "true");
 
     // Re-enable body scroll
     this.enableScroll();
 
     // Return focus to the gallery item that was clicked
-    const galleryItems = document.querySelectorAll('.gallery-item');
+    const galleryItems = document.querySelectorAll(".gallery-item");
     if (galleryItems[this.currentImageIndex]) {
       galleryItems[this.currentImageIndex].focus();
     }
@@ -272,9 +275,10 @@ class Gallery {
    * Shows the previous image in the lightbox
    */
   showPreviousImage() {
-    const newIndex = this.currentImageIndex === 0
-      ? this.filteredImages.length - 1
-      : this.currentImageIndex - 1;
+    const newIndex =
+      this.currentImageIndex === 0
+        ? this.filteredImages.length - 1
+        : this.currentImageIndex - 1;
 
     this.updateLightboxImage(newIndex);
   }
@@ -283,9 +287,10 @@ class Gallery {
    * Shows the next image in the lightbox
    */
   showNextImage() {
-    const newIndex = this.currentImageIndex === this.filteredImages.length - 1
-      ? 0
-      : this.currentImageIndex + 1;
+    const newIndex =
+      this.currentImageIndex === this.filteredImages.length - 1
+        ? 0
+        : this.currentImageIndex + 1;
 
     this.updateLightboxImage(newIndex);
   }
@@ -302,34 +307,39 @@ class Gallery {
 
     // Determine slide direction based on navigation
     let direction;
-    if (index > previousIndex || (previousIndex === this.filteredImages.length - 1 && index === 0)) {
-      direction = 'next';
+    if (
+      index > previousIndex ||
+      (previousIndex === this.filteredImages.length - 1 && index === 0)
+    ) {
+      direction = "next";
     } else {
-      direction = 'prev';
+      direction = "prev";
     }
 
     // Handle wrap-around cases
     if (previousIndex === 0 && index === this.filteredImages.length - 1) {
-      direction = 'prev';
+      direction = "prev";
     }
 
     // Show loading spinner
-    const loadingElement = document.querySelector('.carousel-loading');
+    const loadingElement = document.querySelector(".carousel-loading");
     if (loadingElement) {
-      loadingElement.classList.remove('hidden');
+      loadingElement.classList.remove("hidden");
     }
 
     // Start exit animation
-    this.lightboxImage.style.transition = 'transform 0.3s ease-out, opacity 0.2s ease-out';
-    this.lightboxImage.style.transform = direction === 'next' ? 'translateX(-50px)' : 'translateX(50px)';
-    this.lightboxImage.style.opacity = '0';
+    this.lightboxImage.style.transition =
+      "transform 0.3s ease-out, opacity 0.2s ease-out";
+    this.lightboxImage.style.transform =
+      direction === "next" ? "translateX(-50px)" : "translateX(50px)";
+    this.lightboxImage.style.opacity = "0";
 
     setTimeout(() => {
       // Update content
       this.lightboxImage.src = image.url;
       this.lightboxImage.alt = image.alt;
       this.lightboxTitle.textContent = image.name;
-      this.carouselDescription.textContent = image.alt || '';
+      this.carouselDescription.textContent = image.alt || "";
 
       // Update current index
       this.currentImageIndex = index;
@@ -339,28 +349,30 @@ class Gallery {
       this.updateActiveThumbnail();
 
       // Reset position for enter animation
-      this.lightboxImage.style.transform = direction === 'next' ? 'translateX(50px)' : 'translateX(-50px)';
+      this.lightboxImage.style.transform =
+        direction === "next" ? "translateX(50px)" : "translateX(-50px)";
 
       // Image load handler
       const handleImageLoad = () => {
         // Hide loading spinner
         if (loadingElement) {
-          loadingElement.classList.add('hidden');
+          loadingElement.classList.add("hidden");
         }
 
         // Start enter animation
         requestAnimationFrame(() => {
-          this.lightboxImage.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
-          this.lightboxImage.style.transform = 'translateX(0)';
-          this.lightboxImage.style.opacity = '1';
+          this.lightboxImage.style.transition =
+            "transform 0.3s ease-out, opacity 0.3s ease-out";
+          this.lightboxImage.style.transform = "translateX(0)";
+          this.lightboxImage.style.opacity = "1";
         });
 
         // Remove event listener
-        this.lightboxImage.removeEventListener('load', handleImageLoad);
+        this.lightboxImage.removeEventListener("load", handleImageLoad);
       };
 
       // Add load event listener
-      this.lightboxImage.addEventListener('load', handleImageLoad);
+      this.lightboxImage.addEventListener("load", handleImageLoad);
 
       // Fallback in case image is already loaded
       if (this.lightboxImage.complete) {
@@ -375,30 +387,30 @@ class Gallery {
   generateThumbnails() {
     if (!this.thumbnailsContainer) return;
 
-    this.thumbnailsContainer.innerHTML = '';
+    this.thumbnailsContainer.innerHTML = "";
 
     this.filteredImages.forEach((image, index) => {
-      const thumbnailItem = document.createElement('div');
-      thumbnailItem.className = 'thumbnail-item';
-      thumbnailItem.setAttribute('tabindex', '0');
-      thumbnailItem.setAttribute('role', 'button');
-      thumbnailItem.setAttribute('aria-label', `View image: ${image.name}`);
+      const thumbnailItem = document.createElement("div");
+      thumbnailItem.className = "thumbnail-item";
+      thumbnailItem.setAttribute("tabindex", "0");
+      thumbnailItem.setAttribute("role", "button");
+      thumbnailItem.setAttribute("aria-label", `View image: ${image.name}`);
 
-      const thumbnailImg = document.createElement('img');
+      const thumbnailImg = document.createElement("img");
       thumbnailImg.src = image.url;
       thumbnailImg.alt = image.alt;
-      thumbnailImg.loading = 'lazy';
+      thumbnailImg.loading = "lazy";
 
       thumbnailItem.appendChild(thumbnailImg);
 
       // Click handler
-      thumbnailItem.addEventListener('click', () => {
+      thumbnailItem.addEventListener("click", () => {
         this.updateLightboxImage(index);
       });
 
       // Keyboard handler
-      thumbnailItem.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+      thumbnailItem.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           this.updateLightboxImage(index);
         }
@@ -422,18 +434,19 @@ class Gallery {
    * Updates the active thumbnail
    */
   updateActiveThumbnail() {
-    const thumbnails = this.thumbnailsContainer.querySelectorAll('.thumbnail-item');
+    const thumbnails =
+      this.thumbnailsContainer.querySelectorAll(".thumbnail-item");
     thumbnails.forEach((thumbnail, index) => {
       if (index === this.currentImageIndex) {
-        thumbnail.classList.add('active');
+        thumbnail.classList.add("active");
         // Scroll thumbnail into view
         thumbnail.scrollIntoView({
-          behavior: 'smooth',
-          block: 'nearest',
-          inline: 'center'
+          behavior: "smooth",
+          block: "nearest",
+          inline: "center",
         });
       } else {
-        thumbnail.classList.remove('active');
+        thumbnail.classList.remove("active");
       }
     });
   }
@@ -443,11 +456,12 @@ class Gallery {
    */
   disableScroll() {
     // Store current scroll position
-    this.scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+    this.scrollPosition =
+      window.pageYOffset || document.documentElement.scrollTop;
 
     // Apply noscroll class and set top position to prevent jump
     document.body.style.top = `-${this.scrollPosition}px`;
-    document.body.classList.add('noscroll');
+    document.body.classList.add("noscroll");
   }
 
   /**
@@ -455,8 +469,8 @@ class Gallery {
    */
   enableScroll() {
     // Remove noscroll class
-    document.body.classList.remove('noscroll');
-    document.body.style.top = '';
+    document.body.classList.remove("noscroll");
+    document.body.style.top = "";
 
     // Restore scroll position
     window.scrollTo(0, this.scrollPosition);
@@ -482,16 +496,16 @@ class Gallery {
     };
 
     // Add scroll event listener
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
 
     // Add click event listener
-    this.backToTopBtn.addEventListener('click', () => {
+    this.backToTopBtn.addEventListener("click", () => {
       this.scrollToTop();
     });
 
     // Add keyboard event listener
-    this.backToTopBtn.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
+    this.backToTopBtn.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         this.scrollToTop();
       }
@@ -514,12 +528,12 @@ class Gallery {
 
     // Show button if page is long enough and user has scrolled past 50%
     const isPageLong = documentHeight > windowHeight * 1.5; // Page is at least 1.5x viewport height
-    const hasScrolledPast50Percent = scrollPercentage > 0.5;
+    const hasScrolledPast50Percent = scrollPercentage > 0.1;
 
     if (isPageLong && hasScrolledPast50Percent) {
-      this.backToTopBtn.classList.remove('hidden');
+      this.backToTopBtn.classList.remove("hidden");
     } else {
-      this.backToTopBtn.classList.add('hidden');
+      this.backToTopBtn.classList.add("hidden");
     }
   }
 
@@ -529,7 +543,7 @@ class Gallery {
   scrollToTop() {
     window.scrollTo({
       top: 0,
-      behavior: 'smooth'
+      behavior: "smooth",
     });
   }
 
@@ -538,11 +552,12 @@ class Gallery {
    * @param {string} location - Location to filter by
    */
   filterByLocation(location) {
-    const filteredImages = location === 'all'
-      ? this.images
-      : this.images.filter(img =>
-          img.name.toLowerCase().includes(location.toLowerCase())
-        );
+    const filteredImages =
+      location === "all"
+        ? this.images
+        : this.images.filter((img) =>
+            img.name.toLowerCase().includes(location.toLowerCase())
+          );
 
     this.renderFilteredGallery(filteredImages);
   }
@@ -552,11 +567,13 @@ class Gallery {
    * @param {Array} filteredImages - Filtered array of images
    */
   renderFilteredGallery(filteredImages) {
-    this.galleryGrid.innerHTML = '';
+    this.galleryGrid.innerHTML = "";
 
     filteredImages.forEach((image) => {
       // Find original index for lightbox navigation
-      const originalIndex = this.images.findIndex(img => img.url === image.url);
+      const originalIndex = this.images.findIndex(
+        (img) => img.url === image.url
+      );
       const galleryItem = this.createGalleryItem(image, originalIndex);
       this.galleryGrid.appendChild(galleryItem);
     });
@@ -567,19 +584,21 @@ class Gallery {
    * @param {string} query - Search query
    */
   searchGallery(query) {
-    const searchResults = query === ''
-      ? this.images
-      : this.images.filter(img =>
-          img.name.toLowerCase().includes(query.toLowerCase()) ||
-          img.alt.toLowerCase().includes(query.toLowerCase())
-        );
+    const searchResults =
+      query === ""
+        ? this.images
+        : this.images.filter(
+            (img) =>
+              img.name.toLowerCase().includes(query.toLowerCase()) ||
+              img.alt.toLowerCase().includes(query.toLowerCase())
+          );
 
     this.renderFilteredGallery(searchResults);
   }
 }
 
 // Initialize gallery when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
   new Gallery();
 });
 
