@@ -88,12 +88,12 @@
   font-weight: 600;
 }
 
-.filter-btn:focus {
+.filter-btn:focus-visible {
   outline: 2px solid var(--prime-theme);
   outline-offset: 2px;
 }
 
-.filter-btn.active:focus {
+.filter-btn.active:focus-visible {
   outline: none;
 }
 
@@ -214,7 +214,7 @@
   border-color: var(--prime-theme);
 }
 
-.gallery-item:focus {
+.gallery-item:focus-visible {
   outline: 2px solid var(--prime-theme);
   outline-offset: 2px;
 }
@@ -702,10 +702,6 @@
 }
 
 /* Focus styles for keyboard navigation */
-.gallery-item:focus-visible {
-  outline: 2px solid var(--prime-theme);
-  outline-offset: 2px;
-}
 
 .carousel-close:focus-visible,
 .carousel-nav:focus-visible {

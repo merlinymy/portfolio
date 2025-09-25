@@ -5,6 +5,15 @@
   box-sizing: border-box;
 }
 
+/* Remove default focus outlines and only show on keyboard navigation */
+* {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: revert;
+}
+
 html {
   scroll-behavior: smooth;
 }
