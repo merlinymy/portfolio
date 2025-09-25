@@ -16,6 +16,10 @@ class Gallery {
     this.lightbox = document.getElementById('lightbox');
     this.lightboxImage = document.getElementById('lightbox-image');
     this.lightboxTitle = document.getElementById('lightbox-title');
+    this.carouselCurrent = document.getElementById('carousel-current');
+    this.carouselTotal = document.getElementById('carousel-total');
+    this.thumbnailsContainer = document.getElementById('thumbnails-container');
+    this.carouselDescription = document.getElementById('carousel-description');
 
     this.init();
   }
@@ -149,13 +153,13 @@ class Gallery {
   }
 
   /**
-   * Sets up lightbox event listeners
+   * Sets up carousel event listeners
    */
   setupLightboxEvents() {
-    const closeBtn = document.querySelector('.lightbox-close');
-    const prevBtn = document.querySelector('.lightbox-prev');
-    const nextBtn = document.querySelector('.lightbox-next');
-    const backdrop = document.querySelector('.lightbox-backdrop');
+    const closeBtn = document.querySelector('.carousel-close');
+    const prevBtn = document.querySelector('.carousel-nav-prev');
+    const nextBtn = document.querySelector('.carousel-nav-next');
+    const backdrop = document.querySelector('.carousel-backdrop');
 
     if (closeBtn) {
       closeBtn.addEventListener('click', () => this.closeLightbox());
@@ -198,7 +202,7 @@ class Gallery {
   }
 
   /**
-   * Opens the lightbox with the specified image
+   * Opens the carousel with the specified image
    * @param {number} filteredIndex - Index in filtered array
    * @param {number} originalIndex - Index in original array (optional)
    */
@@ -210,16 +214,16 @@ class Gallery {
 
     const image = this.filteredImages[filteredIndex];
 
-    // Prevent body scroll immediately to avoid flash
+    // Prevent body scroll immediately
     document.body.classList.add('noscroll');
 
-    // Set initial state for smooth opening
-    this.lightbox.style.opacity = '0';
-    this.lightboxImage.style.opacity = '0';
-    this.lightboxImage.style.transform = 'scale(0.8)';
-    this.lightboxTitle.style.opacity = '0';
+    // Generate thumbnails
+    this.generateThumbnails();
 
-    // Show lightbox container
+    // Update counter
+    this.updateCounter();
+
+    // Show carousel container
     this.lightbox.classList.remove('hidden');
     this.lightbox.setAttribute('aria-hidden', 'false');
 
@@ -227,28 +231,14 @@ class Gallery {
     this.lightboxImage.src = image.url;
     this.lightboxImage.alt = image.alt;
     this.lightboxTitle.textContent = image.name;
+    this.carouselDescription.textContent = image.alt || '';
 
-    // Smooth opening animation
-    requestAnimationFrame(() => {
-      // Fade in backdrop
-      this.lightbox.style.transition = 'opacity 0.3s ease';
-      this.lightbox.style.opacity = '1';
+    // Update active thumbnail
+    this.updateActiveThumbnail();
 
-      // Animate image in with scale + fade
-      this.lightboxImage.style.transition = 'opacity 0.4s ease 0.1s, transform 0.4s ease 0.1s';
-      this.lightboxImage.style.opacity = '1';
-      this.lightboxImage.style.transform = 'scale(1)';
-
-      // Fade in caption after image
-      setTimeout(() => {
-        this.lightboxTitle.style.transition = 'opacity 0.3s ease';
-        this.lightboxTitle.style.opacity = '1';
-      }, 300);
-    });
-
-    // Focus management for accessibility (delayed to avoid flash)
+    // Focus management for accessibility
     setTimeout(() => {
-      const closeButton = document.querySelector('.lightbox-close');
+      const closeButton = document.querySelector('.carousel-close');
       if (closeButton) {
         closeButton.focus();
       }
@@ -256,39 +246,23 @@ class Gallery {
   }
 
   /**
-   * Closes the lightbox
+   * Closes the carousel
    */
   closeLightbox() {
     this.lightboxOpen = false;
 
-    // Smooth closing animation
-    this.lightboxTitle.style.transition = 'opacity 0.2s ease';
-    this.lightboxTitle.style.opacity = '0';
+    // Hide carousel
+    this.lightbox.classList.add('hidden');
+    this.lightbox.setAttribute('aria-hidden', 'true');
 
-    this.lightboxImage.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-    this.lightboxImage.style.opacity = '0';
-    this.lightboxImage.style.transform = 'scale(0.9)';
+    // Re-enable body scroll
+    document.body.classList.remove('noscroll');
 
-    // Fade out backdrop
-    setTimeout(() => {
-      this.lightbox.style.transition = 'opacity 0.2s ease';
-      this.lightbox.style.opacity = '0';
-    }, 100);
-
-    // Hide lightbox after animation completes
-    setTimeout(() => {
-      this.lightbox.classList.add('hidden');
-      this.lightbox.setAttribute('aria-hidden', 'true');
-
-      // Re-enable body scroll
-      document.body.classList.remove('noscroll');
-
-      // Return focus to the gallery item that was clicked
-      const galleryItems = document.querySelectorAll('.gallery-item');
-      if (galleryItems[this.currentImageIndex]) {
-        galleryItems[this.currentImageIndex].focus();
-      }
-    }, 300);
+    // Return focus to the gallery item that was clicked
+    const galleryItems = document.querySelectorAll('.gallery-item');
+    if (galleryItems[this.currentImageIndex]) {
+      galleryItems[this.currentImageIndex].focus();
+    }
   }
 
   /**
@@ -314,7 +288,7 @@ class Gallery {
   }
 
   /**
-   * Updates the lightbox with a new image
+   * Updates the carousel with a new image
    * @param {number} index - Index of the new image
    */
   updateLightboxImage(index) {
@@ -326,51 +300,139 @@ class Gallery {
     // Determine slide direction based on navigation
     let direction;
     if (index > previousIndex || (previousIndex === this.filteredImages.length - 1 && index === 0)) {
-      direction = 'next'; // Going forward (or wrapping from last to first)
+      direction = 'next';
     } else {
-      direction = 'prev'; // Going backward (or wrapping from first to last)
+      direction = 'prev';
     }
 
     // Handle wrap-around cases
     if (previousIndex === 0 && index === this.filteredImages.length - 1) {
-      direction = 'prev'; // Wrapped backward
+      direction = 'prev';
+    }
+
+    // Show loading spinner
+    const loadingElement = document.querySelector('.carousel-loading');
+    if (loadingElement) {
+      loadingElement.classList.remove('hidden');
     }
 
     // Start exit animation
     this.lightboxImage.style.transition = 'transform 0.3s ease-out, opacity 0.2s ease-out';
-    this.lightboxImage.style.transform = direction === 'next' ? 'translateX(-100px)' : 'translateX(100px)';
+    this.lightboxImage.style.transform = direction === 'next' ? 'translateX(-50px)' : 'translateX(50px)';
     this.lightboxImage.style.opacity = '0';
-
-    // Fade out caption
-    this.lightboxTitle.style.transition = 'opacity 0.2s ease-out';
-    this.lightboxTitle.style.opacity = '0';
 
     setTimeout(() => {
       // Update content
       this.lightboxImage.src = image.url;
       this.lightboxImage.alt = image.alt;
       this.lightboxTitle.textContent = image.name;
+      this.carouselDescription.textContent = image.alt || '';
 
-      // Update current index after content is loaded
+      // Update current index
       this.currentImageIndex = index;
 
-      // Reset position for enter animation (from opposite side)
-      this.lightboxImage.style.transform = direction === 'next' ? 'translateX(100px)' : 'translateX(-100px)';
+      // Update counter and thumbnails
+      this.updateCounter();
+      this.updateActiveThumbnail();
 
-      // Use requestAnimationFrame for smooth animation
-      requestAnimationFrame(() => {
+      // Reset position for enter animation
+      this.lightboxImage.style.transform = direction === 'next' ? 'translateX(50px)' : 'translateX(-50px)';
+
+      // Image load handler
+      const handleImageLoad = () => {
+        // Hide loading spinner
+        if (loadingElement) {
+          loadingElement.classList.add('hidden');
+        }
+
         // Start enter animation
-        this.lightboxImage.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
-        this.lightboxImage.style.transform = 'translateX(0)';
-        this.lightboxImage.style.opacity = '1';
+        requestAnimationFrame(() => {
+          this.lightboxImage.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
+          this.lightboxImage.style.transform = 'translateX(0)';
+          this.lightboxImage.style.opacity = '1';
+        });
 
-        // Fade in caption with slight delay
-        setTimeout(() => {
-          this.lightboxTitle.style.transition = 'opacity 0.3s ease-out';
-          this.lightboxTitle.style.opacity = '1';
-        }, 100);
-      });
+        // Remove event listener
+        this.lightboxImage.removeEventListener('load', handleImageLoad);
+      };
+
+      // Add load event listener
+      this.lightboxImage.addEventListener('load', handleImageLoad);
+
+      // Fallback in case image is already loaded
+      if (this.lightboxImage.complete) {
+        handleImageLoad();
+      }
     }, 200);
+  }
+
+  /**
+   * Generates thumbnail strip for the carousel
+   */
+  generateThumbnails() {
+    if (!this.thumbnailsContainer) return;
+
+    this.thumbnailsContainer.innerHTML = '';
+
+    this.filteredImages.forEach((image, index) => {
+      const thumbnailItem = document.createElement('div');
+      thumbnailItem.className = 'thumbnail-item';
+      thumbnailItem.setAttribute('tabindex', '0');
+      thumbnailItem.setAttribute('role', 'button');
+      thumbnailItem.setAttribute('aria-label', `View image: ${image.name}`);
+
+      const thumbnailImg = document.createElement('img');
+      thumbnailImg.src = image.url;
+      thumbnailImg.alt = image.alt;
+      thumbnailImg.loading = 'lazy';
+
+      thumbnailItem.appendChild(thumbnailImg);
+
+      // Click handler
+      thumbnailItem.addEventListener('click', () => {
+        this.updateLightboxImage(index);
+      });
+
+      // Keyboard handler
+      thumbnailItem.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.updateLightboxImage(index);
+        }
+      });
+
+      this.thumbnailsContainer.appendChild(thumbnailItem);
+    });
+  }
+
+  /**
+   * Updates the carousel counter
+   */
+  updateCounter() {
+    if (this.carouselCurrent && this.carouselTotal) {
+      this.carouselCurrent.textContent = this.currentImageIndex + 1;
+      this.carouselTotal.textContent = this.filteredImages.length;
+    }
+  }
+
+  /**
+   * Updates the active thumbnail
+   */
+  updateActiveThumbnail() {
+    const thumbnails = this.thumbnailsContainer.querySelectorAll('.thumbnail-item');
+    thumbnails.forEach((thumbnail, index) => {
+      if (index === this.currentImageIndex) {
+        thumbnail.classList.add('active');
+        // Scroll thumbnail into view
+        thumbnail.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center'
+        });
+      } else {
+        thumbnail.classList.remove('active');
+      }
+    });
   }
 
   /**

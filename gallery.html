@@ -101,24 +101,56 @@
       </section>
     </main>
 
-    <!-- Lightbox Modal -->
-    <div id="lightbox" class="lightbox hidden" aria-hidden="true">
-      <div class="lightbox-backdrop" aria-label="Close lightbox"></div>
-      <div class="lightbox-content">
-        <button class="lightbox-close" aria-label="Close lightbox">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-        <button class="lightbox-prev" aria-label="Previous image">
-          <span class="material-symbols-outlined">chevron_left</span>
-        </button>
-        <button class="lightbox-next" aria-label="Next image">
-          <span class="material-symbols-outlined">chevron_right</span>
-        </button>
-        <div class="lightbox-image-container">
-          <img id="lightbox-image" src="" alt="" />
+    <!-- Modern Carousel Modal -->
+    <div id="lightbox" class="carousel-modal hidden" aria-hidden="true" role="dialog" aria-labelledby="carousel-title" aria-describedby="carousel-description">
+      <div class="carousel-backdrop" aria-label="Close carousel"></div>
+
+      <div class="carousel-container">
+        <!-- Header -->
+        <div class="carousel-header">
+          <div class="carousel-counter">
+            <span id="carousel-current">1</span> / <span id="carousel-total">1</span>
+          </div>
+          <button class="carousel-close" aria-label="Close carousel">
+            <span class="material-symbols-outlined">close</span>
+          </button>
         </div>
-        <div class="lightbox-caption">
-          <h3 id="lightbox-title"></h3>
+
+        <!-- Main Content -->
+        <div class="carousel-content">
+          <!-- Navigation -->
+          <button class="carousel-nav carousel-nav-prev" aria-label="Previous image">
+            <span class="material-symbols-outlined">chevron_left</span>
+          </button>
+
+          <!-- Image Display -->
+          <div class="carousel-main">
+            <div class="carousel-image-container">
+              <img id="lightbox-image" src="" alt="" class="carousel-image" />
+              <div class="carousel-loading hidden">
+                <div class="loading-spinner"></div>
+              </div>
+            </div>
+          </div>
+
+          <button class="carousel-nav carousel-nav-next" aria-label="Next image">
+            <span class="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
+
+        <!-- Footer -->
+        <div class="carousel-footer">
+          <div class="carousel-caption">
+            <h3 id="lightbox-title" class="carousel-title"></h3>
+            <div id="carousel-description" class="carousel-description"></div>
+          </div>
+
+          <!-- Thumbnail strip -->
+          <div class="carousel-thumbnails">
+            <div class="thumbnails-container" id="thumbnails-container">
+              <!-- Thumbnails will be generated dynamically -->
+            </div>
+          </div>
         </div>
       </div>
     </div>
