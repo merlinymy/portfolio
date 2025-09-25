@@ -5,8 +5,8 @@ A clean, interactive portfolio showcasing web development projects with 3D graph
 ## Screenshot
 
 ![Portfolio Screenshot](./projectScreenshot.png)
-![Live Demo](https://merlinyang.com)
-![Video Demo](https://youtu.be/mIz24egJmnk)
+[Live Demo](https://merlinyang.com)
+[Video Demo](https://youtu.be/mIz24egJmnk)
 
 ## Features
 
