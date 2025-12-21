@@ -1,5 +1,19 @@
 export const projectArr = [
   {
+    imgUrl: "./assets/project_web/metacognition.webp",
+    name: "Metacognition Learning Platform",
+    desc: "A learning platform that coaches metacognitive learning using your own study materials.",
+    tech: ["React", "Claude Agents", "MongoDB", "Express"],
+    links: ["https://metacognitionlearningengine.onrender.com/"],
+  },
+  {
+    imgUrl: "./assets/project_web/smgen.webp",
+    name: "Social Media Post Generator",
+    desc: "An AI-powered social media post generator with multilingual support, business info management, and a personalized dashboard.",
+    tech: ["React", "Tailwind", "Supabase", "Cursor"],
+    links: ["https://fantastmediagen.vercel.app/login"],
+  },
+  {
     imgUrl: "./assets/project_web/tcg.webp",
     name: "Pokemon TCG Memory League",
     desc: "A collectible twist on the classic memory game, featuring Pokémon TCG cards and progressive challenges.",
@@ -8,13 +22,6 @@ export const projectArr = [
       "https://github.com/merlinymy/tcg-memo-collector",
       "https://tcgmemoryleague.merlinyang.com/",
     ],
-  },
-  {
-    imgUrl: "./assets/project_web/smgen.webp",
-    name: "Social Media Post Generator",
-    desc: "An AI-powered social media post generator with multilingual support, business info management, and a personalized dashboard.",
-    tech: ["React", "Tailwind", "Supabase", "Cursor"],
-    links: ["https://fantastmediagen.vercel.app/login"],
   },
   {
     imgUrl: "./assets/project_web/fireproofship.webp",
