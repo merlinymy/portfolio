@@ -4,6 +4,7 @@ export const projectArr = [
     name: "Metacognition Learning Platform",
     desc: "A learning platform that coaches metacognitive learning using your own study materials.",
     tech: ["React", "Claude Agents", "MongoDB", "Express"],
+    tags: ["Signature", "AI/ML", "Full-Stack"],
     links: ["https://metacognitionlearningengine.onrender.com/"],
   },
   {
@@ -11,6 +12,7 @@ export const projectArr = [
     name: "Social Media Post Generator",
     desc: "An AI-powered social media post generator with multilingual support, business info management, and a personalized dashboard.",
     tech: ["React", "Tailwind", "Supabase", "Cursor"],
+    tags: ["Signature", "AI/ML", "Full-Stack"],
     links: ["https://fantastmediagen.vercel.app/login"],
   },
   {
@@ -18,6 +20,7 @@ export const projectArr = [
     name: "Pokemon TCG Memory League",
     desc: "A collectible twist on the classic memory game, featuring Pokémon TCG cards and progressive challenges.",
     tech: ["React", "Tailwind", "Howler.js", "Vite"],
+    tags: ["Signature", "Game", "Frontend"],
     links: [
       "https://github.com/merlinymy/tcg-memo-collector",
       "https://tcgmemoryleague.merlinyang.com/",
@@ -28,6 +31,7 @@ export const projectArr = [
     name: "Fireproof Sheep",
     desc: "A top-down shooter web game built with PixiJS. With a unique wool-based resource system that powers both offense and defense.",
     tech: ["Pixi.js", "Claude Agent"],
+    tags: ["Signature", "Game", "AI/ML"],
     links: ["https://fire-proof-sheep.vercel.app/"],
   },
   {
@@ -35,6 +39,7 @@ export const projectArr = [
     name: "Giant Interactive 3D Sphere",
     desc: "A dynamic, layered triangle turning into a sphere visualized in the browser that blends geometry, animation, and interaction.",
     tech: ["Three.js"],
+    tags: ["3D/Graphics", "Frontend"],
     links: [
       "https://github.com/merlinymy/layered-triangle-sphere",
       "https://layered-triangle-sphere.vercel.app/",
@@ -45,6 +50,7 @@ export const projectArr = [
     name: "ATS Friendly Resume Builder",
     desc: "A modern, printable, and ATS-safe resume builder built with React.",
     tech: ["React", "Tailwind"],
+    tags: ["Frontend", "Utility"],
     links: [
       "https://github.com/merlinymy/cv-builder",
       "https://atsresume.merlinyang.com/",
@@ -55,6 +61,7 @@ export const projectArr = [
     name: "Binary Tree Visualizer",
     desc: "A retro-styled browser app to visualize, edit, and explore binary search trees in real time.",
     tech: ["Javascript", "css", "html"],
+    tags: ["3D/Graphics", "Frontend"],
     links: [
       "https://github.com/merlinymy/binary-search-tree-visualizer",
       "https://merlinymy.github.io/binary-search-tree-visualizer/",
@@ -65,6 +72,7 @@ export const projectArr = [
     name: "Bubble Bar Restaurant Page",
     desc: "Bubble Bar is a fictional restaurant website featuring a Star Trek-inspired menu and a custom bubble rising animation created with HTML Canvas. ",
     tech: ["Javascript", "css", "html", "canvas"],
+    tags: ["Frontend", "3D/Graphics"],
     links: [
       "https://github.com/merlinymy/bubbleBar",
       "https://merlinymy.github.io/bubbleBar/",
@@ -73,8 +81,9 @@ export const projectArr = [
   {
     imgUrl: "./assets/project_web/weatherapp.webp",
     name: "iOS-styled Weather App",
-    desc: "A web replica of Apple’s Weather app focused on a clean, responsive iOS-style UI.",
+    desc: "A web replica of Apple's Weather app focused on a clean, responsive iOS-style UI.",
     tech: ["Javascript", "css", "html"],
+    tags: ["Frontend", "Utility"],
     links: [
       "https://github.com/merlinymy/apple-weather-app-replica",
       "https://merlinymy.github.io/apple-weather-app-replica/",
@@ -85,6 +94,7 @@ export const projectArr = [
     name: "iOS-styled Todo List",
     desc: "A lightweight, iOS-inspired reminder app, built entirely with JavaScript, CSS, and HTML—no frameworks, no libraries. This project is a testament to my capability of crafting a smooth, iOS-like experience using only vanilla web technologies.",
     tech: ["Javascript", "css", "html"],
+    tags: ["Frontend", "Utility"],
     links: [
       "https://github.com/merlinymy/ios-reminder-copy",
       "https://merlinymy.github.io/ios-reminder-copy/",
