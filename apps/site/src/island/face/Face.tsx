@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef } from "react";
 import {
   Color,
   Euler,
+  type Group,
   type LineSegments,
   Matrix4,
   type Object3D,
@@ -23,6 +24,8 @@ import {
 import type { FaceData } from "./data";
 import { growHair } from "./hair";
 import { prefersReducedMotion, type LookInput } from "./input";
+import { createLook, type Look } from "./looks";
+import type { LookStyle } from "./looks/params";
 import { Babbler, ClipBlend, ClipPlayer, Gaze, LipSync, Pose, approach, clamp, mixExpressions } from "./motion";
 import { speech } from "./speech";
 import { buildScene, hairShape, shapeHead } from "./scene";
@@ -129,11 +132,22 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
   const scene = useMemo(() => buildScene(data), [data]);
   const rig = useMemo(() => buildRig(data), [data]);
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
+  const scanRef = useRef<Group>(null);
+  const lookHost = useRef<Group>(null);
+  const looks = useRef<{ style: LookStyle; look?: Look }>({ style: "scan" });
 
   useEffect(() => () => scene.dispose(), [scene]);
+  useEffect(
+    () => () => {
+      looks.current.look?.dispose();
+      looks.current = { style: "scan" };
+    },
+    [scene],
+  );
 
   useFrame((frame, delta) => {
     const dt = Math.min(delta, 0.05);
+    control.frameMs += (delta * 1000 - control.frameMs) * 0.05;
     const now = frame.clock.elapsedTime;
     const { pose, levels } = rig;
     const m = settings.motion;
@@ -414,6 +428,43 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
     const photo = clamp(amount("photoColor"), 0, 1);
     for (const material of [mat.points, mat.lines, mat.headPoints, mat.headLines]) material.uniforms.uPhoto.value = photo;
 
+    // The face's look (docs/face-looks-plan.md): any look but the points and edges replaces them,
+    // and is built when chosen and thrown away when another is.
+    const style = settings.looks.style;
+    if (style !== looks.current.style) {
+      looks.current.look?.dispose();
+      lookHost.current?.clear();
+      looks.current = { style, look: createLook(style, { data, scene }) };
+      if (looks.current.look) lookHost.current?.add(looks.current.look.object);
+    }
+    if (scanRef.current) scanRef.current.visible = style === "scan";
+    const active = looks.current.look;
+    if (active) {
+      if (realism <= 0.001) scene.geometries.solidFace.computeVertexNormals();
+      active.update({
+        gl: frame.gl,
+        camera,
+        width,
+        height,
+        dpr: frame.viewport.dpr,
+        dt,
+        now,
+        positions: scene.positions,
+        headMatrix: rig.headMatrix,
+        state: rig.state,
+        color: rig.color,
+        brightness: rig.brightness,
+        loudness: rig.loudness,
+        intro: u.uAssemble.value,
+        pointer: input.pointerPx,
+        reduced,
+      });
+      // Each look draws its own eyes: the rings take its glow and color, or hide.
+      mat.eyes.uniforms.uOpacity.value = active.eyes.glow > 0 ? look.eyeOpacity : 0;
+      mat.eyes.uniforms.uGain.value = active.eyes.glow;
+      u.uColor.value.copy(active.eyes.color);
+    }
+
     // Magnet: where the pointer meets a plane just in front of the face, in face space.
     const magnet = amount("magnet") * calm;
     u.uMagnet.value = 0;
@@ -500,6 +551,8 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
   };
   return (
     <group>
+      {/* The points-and-edges look ("scan"), hidden while another look is chosen. */}
+      <group ref={scanRef}>
       <mesh ref={keepOccluder} geometry={scene.geometries.surface} material={scene.materials.occluder} frustumCulled={false} />
       {/* Realistic mode: drawn before the points, so its surface hides what's behind it. */}
       <mesh ref={keepReal} geometry={scene.geometries.mouth} material={scene.materials.mouth} renderOrder={-3} visible={false} frustumCulled={false} />
@@ -521,6 +574,9 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
       <lineSegments ref={realHairRef} geometry={scene.hair} material={scene.materials.realHair} visible={false} frustumCulled={false} />
       <lineSegments geometry={scene.geometries.lines} material={scene.materials.lines} frustumCulled={false} />
       <points geometry={scene.geometries.points} material={scene.materials.points} frustumCulled={false} />
+      </group>
+      {/* The chosen look's own objects go here (looks/). */}
+      <group ref={lookHost} />
       <points geometry={scene.geometries.eyes} material={scene.materials.eyes} frustumCulled={false} />
     </group>
   );

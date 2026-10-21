@@ -13,6 +13,7 @@ import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { loadFace, type FaceData } from "./data";
 import { FOV, Face, type FaceButtons } from "./Face";
 import { LookInput } from "./input";
+import { LOOK_STYLES, type LookStyle } from "./looks/params";
 import { control, settings } from "./settings";
 
 const Lab = lazy(() => import("../lab/Lab"));
@@ -34,6 +35,12 @@ export default function FaceCanvas({ container, buttons }: { container: HTMLElem
   const supported = useMemo(hasWebGL2, []);
   const params = useMemo(() => new URLSearchParams(location.search), []);
   const lab = params.has("lab");
+
+  // ?look=flame opens with that look, for comparing looks and trying them on a phone.
+  useEffect(() => {
+    const style = params.get("look");
+    if (style && (LOOK_STYLES as readonly string[]).includes(style)) settings.looks.style = style as LookStyle;
+  }, [params]);
 
   useEffect(() => {
     if (!params.has("still")) return;

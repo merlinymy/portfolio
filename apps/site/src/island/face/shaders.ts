@@ -3,7 +3,19 @@
  * expression-mixed positions the CPU uploads each frame. Points, lines and eye rings share one
  * vertex shader and one set of uniforms, so they always move together.
  */
-import { AdditiveBlending, Color, DoubleSide, Matrix4, NormalBlending, ShaderMaterial, Vector2, Vector3, Vector4 } from "three";
+import {
+  AdditiveBlending,
+  Color,
+  DoubleSide,
+  type IUniform,
+  Matrix4,
+  NormalBlending,
+  ShaderMaterial,
+  type ShaderMaterialParameters,
+  Vector2,
+  Vector3,
+  Vector4,
+} from "three";
 
 export function createUniforms() {
   return {
@@ -91,6 +103,14 @@ attribute vec3 aSolid;     // the head's own color in realistic mode: skin, hair
 varying vec2 vUv;
 varying vec3 vNormal;
 varying vec3 vSolid;
+#endif
+#ifdef LOOK
+attribute float aExpressive; // how far this point moves across your expressions, 0-1
+attribute float aEdge;       // 1 on the scan's open edges (its outline, eyes and lips), fading inward
+varying float vExpressive;
+varying float vEdge;
+varying vec3 vView;          // the position seen from the camera
+varying vec3 vFace;          // the position on the face before the head turns, for patterns that stick to it
 #endif
 
 float hash(float n) { return fract(sin(n) * 43758.5453); }
@@ -202,6 +222,11 @@ void main() {
     0.6 * sin(t * 1.1 + aSeed * 4.2)
   );
 #endif
+#ifdef LOOK
+  vFace = p;
+  vExpressive = aExpressive;
+  vEdge = aEdge;
+#endif
   p = mix(p, (uHead * vec4(p, 1.0)).xyz, aHeadWeight);
 #ifdef SOLID
   vUv = uv;
@@ -211,6 +236,9 @@ void main() {
 #endif
 
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
+#ifdef LOOK
+  vView = mv.xyz;
+#endif
   // Depth fade, measured from the camera: points farther back than the face's front dim, so a
   // turned head's near ear stays bright and the far side recedes.
   float behind = -mv.z - uDepthCenter;
@@ -308,6 +336,38 @@ export function createOccluder(uniforms: FaceUniforms) {
     polygonOffset: true,
     polygonOffsetFactor: 2,
     polygonOffsetUnits: 4,
+  });
+}
+
+/**
+ * A look's face surface (docs/face-looks-plan.md): the shared vertex shader, so it moves with every
+ * expression, turn and effect, and the look's own fragment shader. The fragment shader gets vNormal
+ * and vView (the surface's direction and position, seen from the camera), vFace (its spot on the
+ * face, for patterns that stick to it), vExpressive and vEdge. Dust and the assemble intro scatter
+ * points, which would tear a surface apart, so this material leaves them out.
+ */
+export function createLookMaterial(
+  uniforms: FaceUniforms,
+  fragmentShader: string,
+  extra: Record<string, IUniform>,
+  options: Partial<ShaderMaterialParameters> = {},
+) {
+  return new ShaderMaterial({
+    uniforms: {
+      ...uniforms,
+      uOpacity: { value: 1 },
+      uSizeScale: { value: 1 },
+      uGain: { value: 1 },
+      uPhoto: { value: 0 },
+      uDust: { value: 0 },
+      uAssemble: { value: 1 },
+      ...extra,
+    },
+    vertexShader,
+    fragmentShader,
+    defines: { SOLID: "", LOOK: "" },
+    side: DoubleSide,
+    ...options,
   });
 }
 

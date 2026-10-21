@@ -1,6 +1,6 @@
 # Face looks: artistic styles for the face
 
-Status: **plan, with your answers in (2026-10-21).** Nothing is built yet.
+Status: **step 1 built (2026-10-21):** the look switcher, the frame-time readout and the flame look. Next: ink in water.
 
 Today the face is drawn as glowing points and edges. This plan adds other **looks**: different ways
 of drawing the same moving face. Each is a set of shaders, small programs that run on the graphics
@@ -21,6 +21,9 @@ keeps your expressions, lip-sync, head turns and gaze for free.
 - **Eyes:** each look draws eyes that fit it. A lab switch can still put the glowing eye rings on
   top.
 - **Order:** flame, ink, water, sand.
+- **Rich first, fast later (2026-10-21):** build each look graphically rich, with fancy lighting
+  and particles, without holding back for speed. Making every look smooth on the iPhone is a later
+  step, so the budgets below are targets for then.
 
 ## The four looks
 

@@ -6,7 +6,7 @@
  * frame. "Export settings" copies the current values as JSON to paste over
  * apps/site/src/island/face/settings.json, which makes them the new defaults.
  */
-import { Leva, button, buttonGroup, folder, useControls } from "leva";
+import { Leva, button, buttonGroup, folder, monitor, useControls } from "leva";
 import type { FaceData } from "../face/data";
 import {
   BUTTON_STYLES,
@@ -18,6 +18,7 @@ import {
   type EffectMode,
   type EffectName,
 } from "../face/settings";
+import { FLAME, type LookStyle, type Param, type ParamValues } from "../face/looks/params";
 import { useSay } from "./say";
 
 function slider<T extends object, K extends keyof T>(
@@ -40,6 +41,26 @@ function slider<T extends object, K extends keyof T>(
   };
 }
 
+/** A look's sliders, one per parameter, with its label and note from looks/params.ts. */
+function lookControls<T extends Record<string, Param>>(prefix: string, spec: T, values: ParamValues<T>) {
+  return Object.fromEntries(
+    Object.entries(spec).map(([key, p]) => [
+      `${prefix}_${key}`,
+      {
+        value: values[key as keyof T],
+        min: p.min,
+        max: p.max,
+        step: p.step,
+        label: p.label,
+        hint: p.hint,
+        onChange: (v: number) => {
+          values[key as keyof T] = v;
+        },
+      },
+    ]),
+  );
+}
+
 function exportSettings() {
   const json = `${JSON.stringify(settings, null, 2)}\n`;
   navigator.clipboard.writeText(json).then(
@@ -55,6 +76,24 @@ export default function Lab({ data }: { data: FaceData }) {
   // Your cloned voice, through the model server on this Mac: development only (say.ts). The
   // condition is fixed when the site is built, so the hooks still run in the same order every time.
   if (import.meta.env.DEV) useSay();
+
+  // How the face is drawn (docs/face-looks-plan.md), then each look's own settings, every one
+  // with a short note (hover it) from looks/params.ts.
+  const looks = settings.looks;
+  useControls("Style", {
+    lookStyle: {
+      value: looks.style,
+      label: "look",
+      options: { "points and edges": "scan", flame: "flame" } satisfies Record<string, LookStyle>,
+      hint: "How the face is drawn. Each look has its own folder of settings below; view size and lights stay under Look.",
+      onChange: (v: LookStyle) => {
+        looks.style = v;
+      },
+    },
+    // How long each frame takes to draw; 16.7 ms is 60 frames a second.
+    "frame time (ms)": monitor(() => control.frameMs, { graph: true, interval: 250 }),
+  });
+  useControls("Flame", lookControls("flame", FLAME, looks.flame), { collapsed: looks.style !== "flame" });
 
   const half = Math.ceil(FACE_STATES.length / 2);
   const stateButtons = (label: string, states: readonly (typeof FACE_STATES)[number][]) =>

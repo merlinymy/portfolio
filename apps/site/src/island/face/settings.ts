@@ -7,6 +7,7 @@
  */
 import type { ClipName } from "./data";
 import type { HairSettings } from "./hair";
+import { FLAME, type FlameSettings, type LookStyle, defaultsOf } from "./looks/params";
 import defaults from "./settings.json";
 
 export const EFFECTS = {
@@ -145,6 +146,8 @@ export interface Settings {
   };
   states: Record<FaceState, { color: string; brightness: number }>;
   effects: Record<EffectName, EffectSettings>;
+  /** How the face is drawn (docs/face-looks-plan.md): "scan" is the points and edges. */
+  looks: { style: LookStyle; flame: FlameSettings };
 }
 
 /**
@@ -154,7 +157,16 @@ export interface Settings {
 export const BUTTON_STYLES = ["head", "orbit", "ring"] as const;
 export type ButtonStyle = (typeof BUTTON_STYLES)[number];
 
-export const DEFAULT_SETTINGS = defaults as Settings;
+/** settings.json, with any look parameter it doesn't list yet at its starting value. */
+function withLookDefaults(json: typeof defaults): Settings {
+  const saved = (json as Partial<Settings>).looks;
+  return {
+    ...(json as unknown as Settings),
+    looks: { style: saved?.style ?? "scan", flame: { ...defaultsOf(FLAME), ...saved?.flame } },
+  };
+}
+
+export const DEFAULT_SETTINGS = withLookDefaults(defaults);
 export const settings: Settings = structuredClone(DEFAULT_SETTINGS);
 
 /** Live requests from the page or the lab, read by the render loop. */
@@ -174,6 +186,8 @@ export const control = {
   attention: null as { x: number; y: number } | null,
   /** Width of a panel open on the right, in pixels; the face moves into the space beside it. */
   panelInset: 0,
+  /** How long each frame takes to draw, in milliseconds, smoothed: the lab shows it (60 fps is 16.7 ms). */
+  frameMs: 0,
 
   setState(next: FaceState) {
     if (next === "strike" && this.state !== "strike") this.previous = this.state;
