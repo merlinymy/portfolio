@@ -151,3 +151,5 @@ tools/face/raw/
 xcuserdata/
 # SwiftPM / SourceKit build and index output
 .build/
+# Wrangler local dev state
+.wrangler/

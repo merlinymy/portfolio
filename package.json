@@ -14,5 +14,8 @@
     "build": "npm run build -w @portfolio/site",
     "preview": "npm run preview -w @portfolio/site",
     "check": "npm run check -w @portfolio/site"
+  },
+  "devDependencies": {
+    "wrangler": "^4.151.3"
   }
 }

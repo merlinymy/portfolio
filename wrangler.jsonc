@@ -1,0 +1,10 @@
+// Cloudflare Workers config: serves the Astro build as static files.
+// The /api proxy to the Mac mini is added in phase 5 (plan §3.2).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "merlinyang",
+  "compatibility_date": "2026-10-20",
+  "assets": {
+    "directory": "./apps/site/dist"
+  }
+}

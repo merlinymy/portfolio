@@ -14,6 +14,7 @@ career-only chat. The full plan is in
 | `content/` | Profile text (experience, projects, skills, common questions) that the site is built from |
 | `tools/FaceScan.swiftpm/` | iPhone app that captures the face mesh and expression clips |
 | `docs/` | Plans and design notes |
+| `wrangler.jsonc` | Cloudflare Workers config: which folder to publish, and later the `/api` route |
 
 ## Commands
 
@@ -25,6 +26,7 @@ Run from the repo root, with Node 22.22 or newer:
 | `npm run dev` | Local dev server at http://localhost:4321 |
 | `npm run build` | Builds the static site into `apps/site/dist/` |
 | `npm run check` | Type-checks the site |
+| `npx wrangler dev` | After a build, serves `apps/site/dist/` the way Cloudflare will, at http://localhost:8787 |
 
 ## AI usage
 

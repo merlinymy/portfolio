@@ -1,6 +1,27 @@
 # Remake 1: face-scan home page
 
-Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answers, speed plan); ready to build. Branch: `Remake_1_face_scan`.
+Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answers, speed plan, Cloudflare Workers, free hair model); ready to build.
+
+## Progress (2026-10-20)
+
+| Phase | State |
+|---|---|
+| 0. Site setup | Done: Astro + React site with six crawlable panels (commit `65c9432`). The Cloudflare config is ready and tested locally; the first deploy waits on your Cloudflare account. |
+| 0b. Domain | To do alongside 2a: move merlinyang.com's DNS from Namecheap to Cloudflare, keeping the current site and email forwarding working |
+| 1. Capture | Done. Hair photos dropped: the hair comes from a free model, and the head is rebuilt from your scan and the three face photos (§5.1). See below. |
+| 2a. Moving face | **Next:** converter, 3D face following the pointer and tilt, effects lab |
+
+**Phase 1 details:**
+- **Captured in the app,** each file checked:
+  - The face scan.
+  - Five clips with eye data.
+  - Mouth shapes (second take, after clearer prompts).
+  - The eye range.
+  - Three texture photos.
+- **Voice:** reference sample plus recording-script Parts 3 and 4.
+- **Where the files are:** all private, in `knowledge/faceScan/` and `knowledge/voice/`.
+- **The iPhone app's code:** commits `24fab9e` and `a222452`.
+- **Note for phase 2a:** in the mouth shapes, AH opens the jaw to only 0.35 and R is barely rounded, so the effects lab needs a lip-sync strength control. Branch: `Remake_1_face_scan`.
 
 Prices and model facts were checked on 2026-10-20 unless marked otherwise. Anything marked
 **(estimate)** is a calculation, not a measurement, and should be measured during the build.
@@ -50,7 +71,7 @@ Two rules sit around the chat:
 | Voice                           | Your cloned voice, muted by default; lips always sync                                                                                                          | Hearing your actual voice is the memorable part. Muting by default respects people browsing at work and fits browsers' autoplay rules. Lip-sync keeps the face alive either way.                                                                                                                                         |
 | Lip timing when muted           | Audio is always generated and played at zero volume                                                                                                            | Muted and unmuted share one path, so they look identical and unmuting mid-reply just works. It costs nothing extra, because the voice runs on your Mac.                                                                                                                                                                  |
 | Face motion                     | Mouth driven by the reply's speech; head, blinks and brows from clips of you recorded on the iPhone                                                            | Lips that don't match the words look dubbed. Your own recorded head and brow movement makes it feel like you, not a generic avatar.                                                                                                                                                                                      |
-| Face source                     | iPhone face mesh (1,220 points) with custom shader effects. The rest of the head and the hair are modeled in Blender around it (phase 2b).                                                                                                     | It comes with ARKit's 52 expression sliders, so it can talk with no hand rigging in Blender. A sparse 1,220-point mesh suits the wireframe look. Long hair scans badly, so the head and hair are modeled from reference photos and a face texture instead.                                                                                                                                                                         |
+| Face source                     | iPhone face mesh (1,220 points) with custom shader effects. The rest of the head is rebuilt around it in Blender from your scan and photos, and the hair is a free model (phase 2b).                                                                                                     | It comes with ARKit's 52 expression sliders, so it can talk with no hand rigging in Blender. A sparse 1,220-point mesh suits the wireframe look. Long hair scans badly, so the head and hair are modeled from reference photos and a face texture instead.                                                                                                                                                                         |
 | Effects                         | Build all of them, switch between them on a test page, then pick favorites                                                                                     | Shader effects are hard to judge on paper. Trying them live settles it faster than debating.                                                                                                                                                                                                                             |
 | Profile                         | Six floating buttons (About, Experience, Projects, Skills, Résumé, Contact), each opening a panel                                                              | The first screen stays just your face, while the full portfolio is one click away for every visitor and crawler.                                                                                                                                                                                                         |
 | Crawlers                        | Welcome, AI crawlers included; all profile text is plain HTML                                                                                                  | Recruiters and AI tools find people through search and scraping. A site they can't read is invisible to them.                                                                                                                                                                                                            |
@@ -59,14 +80,14 @@ Two rules sit around the chat:
 | What gets locked                | The browser ID, for 30 days. IP addresses are only used for rate limits.                                                                                       | Recruiters at one company often share an office IP, and locking by IP would punish all of them for one person. Thirty days stops casual abuse but lets a wrongly locked recruiter come back.                                                                                                                             |
 | Strikes                         | Every category in §7.3                                                                                                                                         | Keeps the bot strictly about your career, and stops anyone collecting a screenshot of "you" saying something damaging.                                                                                                                                                                                                   |
 | Hiring topics the AI may answer | Availability and location, work authorization, salary expectations, and classic interview questions, all using answers you write                               | Recruiters ask these first. Sending your exact words means the AI can't commit you to anything.                                                                                                                                                                                                                          |
-| Instant answers | Six common recruiter questions get pre-made answers in your voice, played from clickable chips with no search, no AI and no Mac (§7.11) | Most conversations open with one of these. Answers start in about 0.2 s instead of several seconds, cost nothing per click, and are the ones you most want worded exactly right. |
+| Instant answers | Six common recruiter questions get pre-made answers in your cloned voice, voiced ahead of time and played from clickable chips with no search, no AI and no Mac (§7.11). Repeat clicks get differently worded versions (later). | Most conversations open with one of these. Answers start in about 0.2 s instead of several seconds, cost nothing per click, and are the ones you most want worded exactly right. |
 | Small talk                      | From a short list of facts you approve, at most two answers per conversation, then the handoff; deeper personal questions earn a strike                                                                                      | Icebreakers are normal in recruiting, and striking them would punish friendly recruiters. The two-answer cap keeps the conversation on your career; a recruiter who wants more small talk is offered the real you.                                                                                                                                                                                                                                |
 | Pasted job postings             | Their own box, treated as information only                                                                                                                     | "Am I a fit for this role?" is the most useful question a recruiter can ask. Some real postings hide traps aimed at AI, and those shouldn't count against the recruiter.                                                                                                                                                 |
 | Language                        | English only                                                                                                                                                   | The filters and the voice clone only have to work, and be tested, in one language. Other languages are where hidden-text tricks slip through.                                                                                                                                                                            |
 | Knowledge                       | A RAG backend (before answering, the AI searches a collection of documents about you for the relevant passages), stored in Postgres with pgvector and searched by both keyword and meaning                                                 | The AI answers from text you wrote instead of its own memory, which stops it inventing experience. It improves as you add documents. pgvector keeps the index in the same database as the transcripts, so the chat depends on one service and every answer links to the passages it used (§3.3).                                                                                                                                                                                     |
 | Chat models                     | Answers by Claude Sonnet 5.5; the strike check and the output check by Claude Haiku 5.5                                                                        | Answers are what recruiters judge, so they get the stronger model. The checks are simple classification jobs where Haiku is fast and costs about $0.0005 a message. Sonnet stays under $20 even at high traffic; Opus would hit the cap.                                                                                 |
 | Backend                         | On the Mac mini (M4, 16 GB) in Docker/OrbStack, reached through Cloudflare Tunnel; one Postgres database holds everything                                                        | Your cloned voice has to run locally to stay in budget, and the Mac already runs Docker and a tunnel. More in §3.1.                                                                                                                                                                                              |
-| Hosting and domain              | merlinyang.com's DNS moves to Cloudflare (still registered at Namecheap). The page goes on Cloudflare Pages, and `merlinyang.com/api` is forwarded to the Mac. | The tunnel only works for domains whose DNS is on Cloudflare. One host for the page and the API keeps the visitor cookie trusted in Safari and avoids cross-domain setup. Pages has no "non-commercial use only" clause, unlike Vercel's free plan.                                                                      |
+| Hosting and domain              | merlinyang.com's DNS moves to Cloudflare (still registered at Namecheap). The page goes on Cloudflare Workers as static files, and `merlinyang.com/api` is forwarded to the Mac. | The tunnel only works for domains whose DNS is on Cloudflare. One host for the page and the API keeps the visitor cookie trusted in Safari and avoids cross-domain setup. Cloudflare now tells new projects to use Workers rather than its older Pages product, and the `/api` forwarding is a few lines in the same Worker. Cloudflare has no "non-commercial use only" clause, unlike Vercel's free plan.                                                                      |
 | Records                         | Full transcripts saved; email on handoff; no admin page                                                                                                        | Transcripts show what recruiters actually ask, so you can improve your answers. Email is enough for a handful of handoffs. An admin page would be a whole login system to secure.                                                                                                                                        |
 | When the Mac is down            | Typing is offline with the earthquake line and the face plays a sleeping clip; the six instant answers still work                                                                                          | Honest and on-brand. A cloud fallback would cost money and still wouldn't have your voice. The instant answers are static files, so keeping them working costs nothing and the site stays useful during an outage.                                                                                                                                                                                                                               |
 | iOS app                         | Review and reuse `tools/FaceScan.swiftpm`                                                                                                                      | Its structure already matches what the site needs, so fixing the gaps is faster than starting over.                                                                                                                                                                                                                      |
@@ -110,8 +131,8 @@ activity, and Qdrant Cloud's free plan suspends a cluster after a week unused an
    ▼
  Cloudflare
    ├─ DNS for merlinyang.com (registration stays at Namecheap)
-   ├─ Pages: the static site Astro builds (HTML, face data, scripts, instant-answer audio)
-   ├─ Pages Function on /api/*: forwards each request to the Mac and adds
+   ├─ Worker static files: the site Astro builds (HTML, face data, scripts, instant-answer audio)
+   ├─ Worker code on /api/*: forwards each request to the Mac and adds
    │    a secret header plus the visitor's real IP address
    ├─ Turnstile (bot check) and one rate-limit rule, applied to /api only
    └─ Tunnel: outbound-only connection from the Mac, so your home IP stays hidden
@@ -147,7 +168,7 @@ activity, and Qdrant Cloud's free plan suspends a cluster after a week unused an
 | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Hono                              | A small TypeScript web framework, so the server shares types with the site and you work in one language.                                                               |
 | mlx-audio                         | Runs models on the Mac's graphics chip through Apple's MLX library. One server, with one OpenAI-style API, covers text-to-speech, speech-to-text and forced alignment. |
-| Pages Function as the `/api` door | Keeps everything on merlinyang.com. It adds the secret header, so the tunnel address is useless if someone finds it.                                                   |
+| Worker code as the `/api` door    | Keeps everything on merlinyang.com. It adds the secret header, so the tunnel address is useless if someone finds it.                                                   |
 | Turnstile                         | Free, and usually invisible to people: no puzzles. It stops scripts from creating visitor IDs in bulk.                                                                 |
 | Resend                            | 3,000 free emails a month and a simple API; a few handoffs a month need nothing more.                                                                                  |
 
@@ -231,7 +252,7 @@ and Sonnet 5.5 is $2/$10.
 - **Prompt caching** isn't counted above. It re-uses the fixed part of each prompt (rules, approved
   answers) at a fraction of the price and lowers these figures further.
 - **Everything else is $0:** voice, speech-to-text, embeddings, Postgres, the tunnel,
-  Cloudflare Pages, Pages Functions (100,000 requests a day free), Turnstile and Resend's free tier.
+  Cloudflare Workers (static files are free and unlimited; 100,000 `/api` requests a day free), Turnstile and Resend's free tier.
 - **Instant answers cost nothing per click:** there are no AI calls, and the files come from
   Cloudflare's network. Every recruiter who clicks a chip instead of typing lowers the bill.
 - **For comparison:** cloud cloned voice (ElevenLabs Flash plus a $6 plan) would add about $3, $20
@@ -380,16 +401,30 @@ Check these after moving the DNS, and again after launch:
    next. Brief tracking dropouts are normal and handled: the status dot ignores dropouts under half
    a second, and clips hold the last pose through them.
 
-**Head and hair (phase 2b).** The iPhone only scans the face, so the rest of the head and your long
-hair are modeled in Blender:
+**Head and hair (phase 2b).** The iPhone only scans the face, so the rest of the head is rebuilt in
+Blender from your scan and photos, and your long hair comes from a free model:
 
 - **Face texture.** The app also takes three photos and records where every vertex landed in each,
   plus the mesh's UV layout (the flat map a texture image is wrapped by). A script paints the photos
   onto the mesh, for Blender and as point colors on the site.
-- **Reference photos.** Front, sides, back, top and hair close-ups guide the modeling. The
-  checklist is in `tools/face/README.md`.
-- **Lined up for free.** The head is modeled around the exported face mesh, in the same
-  coordinates, so no alignment step is needed.
+- **Head, from your own data.** A free base head (CC0, free for any use) is reshaped in Blender
+  to match you:
+  - The face is the scan itself, so it's exact.
+  - Head width, the top outline and the hairline come from the front texture photo. Your hair is
+    tied back in it, so the outline follows your head.
+  - The ears come from the two turned texture photos, which each show one ear.
+  - Head depth and the back of the head appear in no photo, so they keep the base head's average
+    shape. Long hair covers them on the site. If the side view looks wrong, two side-profile photos
+    fix it.
+- **Hair, from a free model.**
+  - Licensed CC0, or CC-BY (free with a credit line on the site).
+  - Candidates: the hair packs for MPFB, the free MakeHuman add-on for Blender (CC0 or CC-BY), and
+    downloadable hair on Sketchfab filtered by license.
+  - Strand hair is preferred over hair cards (flat strips with a hair picture on them): strands
+    become lines, which fit the wireframe look.
+  - The style and length are matched to ordinary photos of you.
+- **Same coordinates.** The base head is moved and scaled in Blender to fit around the
+  exported face mesh, which keeps the site's coordinates, so the site needs no alignment step.
 - **No seam.** Head points near the edge of the face follow the face's movement with a falloff, so
   smiling or opening the jaw doesn't tear the forehead or chin away from the head.
 - **Hair.** Strands export from Blender as curves and render as lines, with extra wind (§5.6).
@@ -515,12 +550,18 @@ Ripple on click works in every state except Locked.
 1. The server has the final, checked reply text (§7.1). It is never streamed word by word before
    the check, so nothing unchecked is ever spoken.
 2. Split the text into sentences.
-3. For each sentence, in order:
+3. **Pronunciation list.** Swap tricky names for sound-it-out spellings the voice model can't get
+   wrong, such as "Qdrant" → "quadrant", "pgvector" → "P G vector", "nginx" → "engine X".
+   - The voice model guesses unfamiliar words from their spelling, whether it copies from a sample
+     or was fine-tuned.
+   - The list is built from how you say each word in `knowledge/voice/words.m4a`.
+   - Only the spoken audio changes; the text on screen keeps the real spelling.
+4. For each sentence, in order:
    1. Text-to-speech in your cloned voice produces the audio.
    2. The forced aligner returns each word's start and end time.
    3. Words become phonemes (individual speech sounds) using a pronunciation dictionary, then
       visemes, then slider values using your `visemes.json`.
-4. The browser gets a stream of events: the sentence text, a link to its audio, and its viseme
+5. The browser gets a stream of events: the sentence text, a link to its audio, and its viseme
    timeline. The first sentence starts playing while later ones are still being generated.
 
 **Why sentence by sentence:** a 120-word reply is about 55 seconds of speech. Voicing it all before
@@ -528,7 +569,7 @@ playing would add tens of seconds of silence. This way the wait is roughly one s
 
 **Why SSE:** the events travel over SSE (server-sent events), a one-way stream from server to
 browser over plain HTTP. Only the server needs to push during a reply, so a two-way WebSocket isn't
-needed, and plain HTTP passes through the Pages Function and the tunnel. Confirm this in phase 5 (§12).
+needed, and plain HTTP passes through the Worker and the tunnel. Confirm this in phase 5 (§12).
 
 ### 6.2 Playback in the browser
 
@@ -577,7 +618,7 @@ grey area under those terms.
 Clicked instant-answer chips skip this whole pipeline (§7.11). Typed messages always go through it.
 
 1. **Gate (code, no AI).**
-   - The request must carry the secret header from the Pages Function.
+   - The request must carry the secret header from the Worker.
    - The browser ID must be valid and not locked.
    - The visitor must be within rate limits, and the month within the spend cap.
    - The message must be within the length limits.
@@ -631,8 +672,8 @@ Clicked instant-answer chips skip this whole pipeline (§7.11). Typed messages a
     `httpOnly` (page scripts can't read it) and `Secure`, and lasts a year.
   - New IDs are limited to 5 per IP address per hour, so a script can't mint fresh IDs to dodge a lockout.
 - **IP addresses are stored only as a salted hash** (scrambled one-way with a secret, so the raw
-  address isn't kept) and used only for rate limits. The real address comes from the Pages
-  Function's forwarded header, which the API trusts only alongside the secret header.
+  address isn't kept) and used only for rate limits. The real address comes from the
+  Worker's forwarded header, which the API trusts only alongside the secret header.
 - **Lockout.**
   - The third strike sets `locked_until` to 30 days ahead.
   - When it passes, the strike count starts fresh.
@@ -837,6 +878,17 @@ work on the Mac.
   asked stay, which nudges the conversation along.
 - **Preloading.** The six answers' audio (about 1 MB, estimate) downloads once the visitor clicks
   into the chat or hovers a chip, so playback starts at once.
+- **Your AI voice throughout.** Instant answers are voiced by your clone ahead of time, never
+  recorded live, so every answer on the site sounds the same. The files stream from Cloudflare's
+  network: playback starts before the download finishes.
+- **Varied wording on repeat clicks (later).**
+  - Each question gets two or three versions with the same facts, worded and structured
+    differently, all voiced ahead of time.
+  - Clicking the same question again plays the next version, never the same one twice in a row.
+  - The first version is the one shown in the About panel for crawlers.
+  - You approve every version, under the same honesty rules as the answers themselves.
+  - Only the first version preloads; later ones download when first needed, which keeps the first
+    load small.
 - **When the Mac is down,** the chips still work: the sleeping face wakes, answers and dozes off
   again. Typing stays offline.
 - **Logging.** When the Mac is up, a click sends a small note to `/api` so it appears in the
@@ -860,7 +912,6 @@ apps/site/             Astro site (static HTML) + one React + TypeScript island
   public/                  face/ (face.glb, clips.bin, visemes.json), Merlin_Yang_Resume.pdf,
                            favicon.png, robots.txt, llms.txt, preview image,
                            instant/ (pre-made answer audio and mouth timing, committed)
-  functions/api/[[path]].ts   Cloudflare Pages Function that forwards /api to the tunnel
 apps/server/           Node + TypeScript (Hono), Dockerfile
   src/pipeline/            gate, pre-filter, strike check, answer, output check, voice
   src/policy/              category → action table (§7.3), tested in isolation
@@ -874,6 +925,8 @@ knowledge.example/     committed template
 tools/FaceScan.swiftpm iPhone capture app
 tools/face/            build.ts and README.md (the file formats)
 docker-compose.yml     api and postgres (with the pgvector extension)
+worker/index.ts        Cloudflare Worker code that forwards /api to the tunnel (phase 5)
+wrangler.jsonc         Cloudflare Workers config: the folder of static files, and the /api route
 ```
 
 Removed on this branch: `index.html`, `about.html`, `scripts/`, `styles/`, `assets/`,
@@ -921,16 +974,16 @@ Each phase ends with something you can see working.
 
 | Phase | Work                                                                                                                                                                           | Done when                                                                                                     |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| 0     | Set up the Astro + React + TypeScript workspace; move the old site's content into `content/`; remove the old pages; deploy a placeholder to a Cloudflare Pages preview address | The preview address shows six readable panels, and `curl` returns their text                                  |
-| 0b    | Move merlinyang.com's DNS to Cloudflare. Records keep pointing at Vercel, so the current site stays up. Set up the tunnel hostname for the API.                                | DNS answers from Cloudflare; the current site is unchanged                                                    |
-| 1     | Build the iPhone app on your phone; add the new clips, viseme capture and the format README; capture your data                                                                 | `face.json`, 5 clips, `visemes.json`, `gaze.json`, the texture photos and the reference photos are on the Mac                                                        |
+| 0     | Set up the Astro + React + TypeScript workspace; move the old site's content into `content/`; remove the old pages; deploy to a Cloudflare Workers address (`*.workers.dev`)     | The preview address shows six readable panels, and `curl` returns their text                                  |
+| 0b    | Move merlinyang.com's DNS to Cloudflare. Records keep pointing at Vercel, so the current site stays up. Recreate Namecheap's email forwarding in Cloudflare Email Routing, which stops working otherwise. Set up the tunnel hostname for the API.                                | DNS answers from Cloudflare; the current site and email forwarding are unchanged                                                    |
+| 1     | Build the iPhone app on your phone; add the new clips, viseme capture and the format README; capture your data                                                                 | `face.json`, 5 clips, `visemes.json`, `gaze.json` and the texture photos are on the Mac                                                                               |
 | 2     | Face rendering, motion layers, pointer and tilt, floating buttons, all effects, the `?lab` page                                                                                | The face follows the pointer and tilt, the buttons float and open panels, and every effect toggles in the lab |
-| 2b | Head and hair: model them in Blender around the exported face mesh, bake the face texture, import into the site, make the seam follow the face, render hair strands as lines (§5.1) | The full head turns with the pointer, and no seam shows when the face moves |
+| 2b | Head and hair: in Blender, reshape a free base head around the exported face mesh using your texture photos, add a free hair model (§5.1), bake the face texture, import into the site, make the seam follow the face, render hair strands as lines (§5.1) | The full head turns with the pointer, and no seam shows when the face moves |
 | 3     | Native model server on the Mac and the voice bake-off                                                                                                                          | A script turns a sentence into your voice plus lip timing; RTF measured                                       |
 | 4     | Private knowledge folder, ingest into Postgres (pgvector + keyword search), search test                                                                                                                      | Your test questions pull the right passages                                                                   |
-| 5     | Chat backend: §7.1 pipeline, strikes, limits, handoff email, transcripts, health check, Pages Function proxy, stage timing logs                                                                   | Red-team set meets its targets; SSE confirmed through the proxy                                               |
+| 5     | Chat backend: §7.1 pipeline, strikes, limits, handoff email, transcripts, health check, Worker `/api` proxy, stage timing logs                                                                   | Red-team set meets its targets; SSE confirmed through the proxy                                               |
 | 6     | Chat UI wired to the face: voice, lip-sync, text reveal, states, notices; write and voice the six instant answers and add their chips                                                                                                       | A full conversation works on desktop and phone                                                                |
-| 7     | Launch: point merlinyang.com at Pages, check the Cloudflare crawler settings (§4.4), uptime monitor, merge to `main`, retire Vercel                                            | merlinyang.com serves the new page and the crawlability checks pass                                           |
+| 7     | Launch: point merlinyang.com at the Worker, check the Cloudflare crawler settings (§4.4), uptime monitor, merge to `main`, retire Vercel                                            | merlinyang.com serves the new page and the crawlability checks pass                                           |
 | 8 | Speed v2 (§7.10): strike check in parallel, sentence-by-sentence answers | A typical generated answer starts within 4 s |
 | 9 | Speed v3 (§7.10): answer reuse, monthly most-asked report | Common typed questions start almost instantly |
 
@@ -951,10 +1004,10 @@ Phases 1 and 3 can run alongside each other, since one is iPhone work and the ot
 | The strike check strikes a real recruiter            | False-strike target in the red-team set; handoff button on every strike reply; Contact panel always works; revoke command |
 | A base M4 is too slow for your voice clone           | Bake-off first (phase 3); Pocket-TTS runs on the CPU as a fallback; queue plus Thinking state                             |
 | The Mac runs out of memory alongside your other apps | Budget in §3.4; drop the separate aligner and use speech-to-text word times                                               |
-| SSE streaming misbehaves through the Pages Function  | Confirm in phase 5. Fallback: a Cloudflare Worker route on `/api/*`, same host                                            |
+| SSE streaming misbehaves through the Worker or the tunnel | Confirm in phase 5 with a test stream. Send a keep-alive comment every 15 s so idle streams aren't closed |
 | Cloudflare blocks AI crawlers by default             | §4.4 checklist at DNS move and launch; `robots.txt` check in §9                                                           |
 | A viral spike                                        | Rate limits, voicing queue, monthly spend cap, Cloudflare rate-limit rule                                                 |
 | Home internet or power outage                        | Designed in: sleeping face, offline message; panels and contact links stay up                                             |
 | Generated answers feel slow | Instant answers for the six common questions; the Thinking animation covers the wait; speed rounds v2 and v3 (§7.10) |
-| Modeling the head and long hair takes longer than expected | It's phase 2b, after the moving face works, so the face-only version can ship first |
+| Fitting the head and long hair takes longer than expected | It starts from a free base head and a free hair model, not from scratch. It's phase 2b, after the moving face works, so the face-only version can ship first |
 | Voice clone misuse                                   | Only your own voice; the page says it's AI-generated; Chatterbox adds a watermark if chosen                               |

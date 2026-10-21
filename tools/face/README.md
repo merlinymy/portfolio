@@ -21,7 +21,7 @@ formats of the files it produces.
 - Use soft, even light on your face, with no bright window behind you. Take glasses off if you can.
 - Tie long hair back loosely, so your forehead, cheeks, hairline and ears are clear. Hair over the
   face disturbs tracking and covers skin the texture photos need. Avoid a tight headband, which can
-  dent your forehead in the scan. Let your hair down again for the reference photos.
+  dent your forehead in the scan.
 
 Each capture starts with a 3-2-1 countdown, and its button shows a checkmark once the file is saved.
 
@@ -53,7 +53,7 @@ make dropouts constant. Open it from the home screen for real captures.
 | 2 | Talking | 30 s | Answer an interview question out loud. Only your brows, blinks and head movement are used; the mouth comes from lip-sync. |
 | 2 | Sleeping | 20 s | Close your eyes and breathe slowly, like you're dozing off. Shown when the server is offline. |
 | 3 | Mouth shapes | about 1 min | 15 shapes. For each one you get 2 s to form it, then hold it still for 1.5 s while the bar fills. Make only the big sound shown, such as **AH**, not the example word under it: saying "father" leaves your mouth on the "-er". Exaggerate a little. If one goes wrong, run the whole set again. |
-| 4 | Face texture | about 10 s | Three photos with a relaxed face: straight on, then turned a little to your left, then to your right. A script uses them to paint your real skin, brows and lips onto the mesh. |
+| 4 | Face texture | about 10 s | Three photos with a relaxed face: straight on, then turned a little to your left, then to your right. A script uses them to paint your real skin, brows and lips onto the mesh, and they guide the shape of the rest of your head. |
 | 5 | Eye range | about 15 s | Keep your head still and move only your eyes: center, then as far left, right, up and down as is comfortable, holding each look while the bar fills. This tells the site how far your eyes and eyelids move when they follow a visitor's pointer. |
 
 ## Get the files to the Mac
@@ -63,36 +63,25 @@ is captured there are 12: `face.json`, `visemes.json`, `gaze.json`, `texture.jso
 three `texture-*.jpg` photos. Git ignores that folder; the website's build turns it into
 `apps/site/public/face/`.
 
-## Reference photos for the head and hair
+## Head and hair
 
-The iPhone only scans your face. The rest of your head and your hair are modeled later in Blender,
-around the face mesh, so they need reference photos rather than a scan.
-
-**Setup:**
-- Use the Camera app's 10-second self-timer, with the phone propped at head height about 1.5 m
-  away. The rear camera gives the most detail.
-- Have your hair styled the way you want it to look on the site.
-- Use soft, even light and a plain background if you can.
-- Keep a neutral face, looking straight ahead rather than at the phone.
-
-Stand on one spot and turn; the phone stays put.
-
-| Photo | How |
-|---|---|
-| Front | Facing the phone |
-| Three-quarter left and right | Turn 45° each way |
-| Left and right profile | Turn 90° each way |
-| Back | Turn all the way around |
-| Top | Put the phone somewhere higher than your head, pointing down |
-| Hair close-ups | The front hairline, the ends, and how it falls over your shoulders |
-
-Save them to `knowledge/faceScan/photos/`. Git ignores all of `knowledge/`, since these are personal
-photos.
+The iPhone only scans your face. In phase 2b the rest of your head is rebuilt in Blender from the
+scan and the three texture photos, and the hair comes from a free 3D model, so no extra photos are
+needed. See plan §5.1.
 
 ## Voice sample (for the voice clone, phase 3)
 
-While you're set up, record yourself reading the text below with Voice Memos, in a quiet room, at a
-normal speaking pace. It takes about 35 seconds.
+While you're set up, record yourself reading the text below in a quiet room, at a normal speaking
+pace. It takes about 35 seconds.
+
+**How to record:**
+- **With a proper mic on the Mac (best):**
+  1. In QuickTime Player, choose File → New Audio Recording.
+  2. Click the arrow next to the record button, pick the mic, and set Quality to Maximum.
+  3. Keep the mic about 10–15 cm from your mouth, slightly off to the side.
+  4. Keep your loudest words well below the top of the level meter, because clipping ruins a clone.
+  5. Do two or three takes and keep the best.
+- **Otherwise:** use Voice Memos on the phone.
 - **Read it exactly.** The voice model needs the exact transcript of the sample, and this text is
   that transcript.
 - **Save it privately** as `knowledge/voice/sample.m4a`. `knowledge/` is ignored by git, and a voice
