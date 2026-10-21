@@ -11,7 +11,7 @@ Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answe
 | 1. Capture | Done. Hair photos dropped: the hair comes from a free model, and the head is rebuilt from your scan and the three face photos (§5.1). See below. |
 | 2a. Moving face | Done. Built: the converter (`npm run face`); the 3D face with clips, eyes following the pointer or a finger (tilt dropped, §5.5); all 14 effects; the face states; the `?lab` panel with a lip-sync strength control; the six floating buttons (three movement styles in the lab) and the pop-up panels (§4.2); the still image for browsers without WebGL and the link-preview image (`npm run face:still`); browser tests (`npm run test:e2e`, 9 passing). |
 | 2b. Head and hair | **Paused (2026-10-21).** The core features (phases 3–7) come first. The realistic head, hair and bust will be modeled in Blender later and dropped in then (§5.8). The face-mesh-only wireframe stays as an artistic option. The code-generated head, hair and realistic mode stay in the lab until the Blender model replaces them. The site shows the face only, and the head file downloads only in the lab. |
-| 3. Voice | **Voice chosen (2026-10-21): Pocket-TTS with the sound-it-out spellings** ("pocket-respelled", §6.3); the other bake-off models were deleted. `services/models/speak.py` turns a sentence into your voice plus word timing and mouth shapes, at about 0.12 of real time. Still to do: the model server, a small always-on local service the chat backend calls, then setting it up on the Mac mini and re-measuring there. |
+| 3. Voice | **Done on the MacBook Air (2026-10-21).** The voice is Pocket-TTS with sound-it-out spellings ("pocket-respelled", §6.3). The model server (`services/models/server.py`) turns a sentence into your voice plus word timing and mouth shapes in about 0.3–0.7 s, holding about 2.3 GB. A `launchd` agent keeps it running; it was tested on the Air. **Deferred:** installing it on the Mac mini and re-measuring there (your call, 2026-10-21). Visitors now only type, so there's no speech-to-text (§7.9). |
 
 **Phase 1 details:**
 - **Captured in the app,** each file checked:
@@ -86,7 +86,7 @@ Two rules sit around the chat:
 | Topic                           | Decision                                                                                                                                                       | Why                                                                                                                                                                                                                                                                                                                      |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Who replies                     | AI version of you, with a handoff to the real you by email                                                                                                     | Recruiters get answers instantly at any hour, and you only step in once someone is serious. A live "real me" mode would need two-way messaging and you on call.                                                                                                                                                          |
-| Input                           | Typing by default; the mic is optional                                                                                                                         | Typing is quieter and more reliable in an office. The mic helps on phones.                                                                                                                                                                                                                                               |
+| Input                           | Typing only (changed 2026-10-21). The site never records or receives a visitor's voice; dictation built into the visitor's phone or computer types into the chat box like a keyboard | Typing is quieter and more reliable in an office. Phones and computers already have dictation in the keyboard, so a mic of our own adds little, and never receiving recordings keeps visitors' voices off the Mac. |
 | Voice                           | Your cloned voice, muted by default; lips always sync                                                                                                          | Hearing your actual voice is the memorable part. Muting by default respects people browsing at work and fits browsers' autoplay rules. Lip-sync keeps the face alive either way.                                                                                                                                         |
 | Lip timing when muted           | Audio is always generated and played at zero volume                                                                                                            | Muted and unmuted share one path, so they look identical and unmuting mid-reply just works. It costs nothing extra, because the voice runs on your Mac.                                                                                                                                                                  |
 | Face motion                     | Mouth driven by the reply's speech; head, blinks and brows from clips of you recorded on the iPhone                                                            | Lips that don't match the words look dubbed. Your own recorded head and brow movement makes it feel like you, not a generic avatar.                                                                                                                                                                                      |
@@ -167,7 +167,6 @@ activity, and Qdrant Cloud's free plan suspends a cluster after a week unused an
      └─ model server (services/models)
           ├─ text-to-speech in your cloned voice (Pocket-TTS, on the CPU; §6.3)
           ├─ forced aligner: given the text and the audio, finds when each word is spoken
-          ├─ speech-to-text for the visitor's mic
           └─ embedding model: turns text into lists of numbers so similar meanings can be found
 
  Cloud services
@@ -186,7 +185,7 @@ activity, and Qdrant Cloud's free plan suspends a cluster after a week unused an
 | Component                         | Why                                                                                                                                                                    |
 | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Hono                              | A small TypeScript web framework, so the server shares types with the site and you work in one language.                                                               |
-| mlx-audio                         | Runs models on the Mac's graphics chip through Apple's MLX library. One server, with one OpenAI-style API, covers text-to-speech, speech-to-text and forced alignment. |
+| mlx-audio                         | Runs models on the Mac's graphics chip through Apple's MLX library; here, the forced aligner. The voice itself, Pocket-TTS, runs on the CPU through Kyutai's own package (§6.3). |
 | Worker code as the `/api` door    | Keeps everything on merlinyang.com. It adds the secret header, so the tunnel address is useless if someone finds it.                                                   |
 | Turnstile                         | Free, and usually invisible to people: no puzzles. It stops scripts from creating visitor IDs in bulk.                                                                 |
 | Resend                            | 3,000 free emails a month and a simple API; a few handoffs a month need nothing more.                                                                                  |
@@ -232,21 +231,18 @@ Meaning-only search can rank a passage about "event streaming" above the one tha
 | Docker VM: api, Postgres with pgvector                       | about 1 GB                                                     |
 | Text-to-speech, cloned voice (Pocket-TTS, measured)     | about 2.7 GB                                                   |
 | Forced aligner (Qwen3-ForcedAligner-0.6B)              | about 1–1.5 GB                                                 |
-| Speech-to-text (Parakeet v3 or Whisper large-v3-turbo) | about 1.5 GB                                                   |
 | Embedding model (Qwen3-Embedding-0.6B)                 | about 0.6 GB                                                   |
-| **Total**                                              | **about 10–12 GB**, leaving roughly 4–6 GB for your other apps |
+| **Total**                                              | **about 9.5–11 GB**, leaving roughly 5–6.5 GB for your other apps |
 
 **Why these models:**
 
 - **Qwen3-Embedding-0.6B:** small, Apache-2.0 licensed, and among the best English retrieval scores
   at its size.
-- **Parakeet v3 or Whisper turbo:** both turn a few seconds of speech into text in under about 1 s
-  on Apple Silicon, under permissive licenses (CC-BY-4.0 and MIT).
 - **The aligner:** works from text it already knows, so it gives better word timing than
   speech-to-text guessing.
 
-- **Trimming option:** speech-to-text models also return word timestamps, so one model could do both
-  the visitor's mic and the lip timing. That saves about 1 GB, with somewhat less accurate lip timing.
+- **Trimming option:** drop the aligner and time the lips in the browser from the playing audio
+  (§6.2's fallback). That saves about 1–1.5 GB, with less accurate lip timing.
 - **Speed:** a base M4 should voice about 2–3 replies at the same time before others queue
   (estimate). That's plenty for recruiter traffic.
 
@@ -270,7 +266,7 @@ and Sonnet 5.5 is $2/$10.
 
 - **Prompt caching** isn't counted above. It re-uses the fixed part of each prompt (rules, approved
   answers) at a fraction of the price and lowers these figures further.
-- **Everything else is $0:** voice, speech-to-text, embeddings, Postgres, the tunnel,
+- **Everything else is $0:** voice, embeddings, Postgres, the tunnel,
   Cloudflare Workers (static files are free and unlimited; 100,000 `/api` requests a day free), Turnstile and Resend's free tier.
 - **Instant answers cost nothing per click:** there are no AI calls, and the files come from
   Cloudflare's network. Every recruiter who clicks a chip instead of typing lowers the bill.
@@ -781,7 +777,7 @@ you heard was jumbled tech names. You also found the two Qwen variants worse tha
   time. mlx-audio's port to the graphics chip runs at 0.17, and it cut sentences short. The model
   is tiny (219 MB) and makes audio a sliver at a time: each step is too small to keep the graphics
   chip busy, and Apple's CPU cores are fast at small sequential work. Staying on two CPU cores also
-  leaves the graphics chip free for the aligner, speech-to-text and the search model.
+  leaves the graphics chip free for the aligner and the search model.
 - **Fine-tuning is out.** Kyutai's training guide needs at least 100 hours of transcribed speech,
   with 1,000+ for a strong model, plus Linux and an NVIDIA graphics card. Fine-tuning teaches a
   new voice from many hours; one person's voice comes from a short sample instead, which is what
@@ -971,7 +967,6 @@ knowledge/
 | Chat message length          | 1,000 characters                                                                                                                                    |
 | Job posting length           | 6,000 characters                                                                                                                                    |
 | Reply length                 | about 120 words                                                                                                                                     |
-| Mic recording                | 30 s                                                                                                                                                |
 | Small talk | 2 answers per conversation, then the handoff offer (no strike) |
 | Per browser                  | 10 messages per 5 minutes, 60 per day                                                                                                               |
 | Per IP address               | 30 messages per 10 minutes; 5 new browser IDs per hour                                                                                              |
@@ -992,12 +987,15 @@ real recruiter never hits them.
 - Optional: a free uptime monitor (e.g. UptimeRobot) calls the same health check and emails you
   when the Mac is down.
 
-### 7.9 Mic input
+### 7.9 No voice input (changed 2026-10-21)
 
-- The browser records the clip and uploads it, and speech-to-text runs on the Mac.
-- **The transcribed text goes into the chat box for the visitor to check and send,** so a misheard
-  word never earns a strike.
-- Nothing depends on the browser's own speech recognition, so Firefox works too.
+- **Visitors only type.** The site has no mic button, and it never records, uploads or receives a
+  visitor's voice.
+- **Dictation still works.** Phones and computers have dictation built into the keyboard (the mic
+  key on an iPhone or Android keyboard, Dictation on a Mac). It types into the chat box like any
+  keyboard, so only text reaches the site, and the visitor sees and can fix it before sending.
+- **What this removes:** speech-to-text on the Mac (about 1.5 GB of memory) and the 30 s
+  recording limit.
 
 ### 7.10 Speed
 
@@ -1194,7 +1192,7 @@ Phases 1 and 3 can run alongside each other, since one is iPhone work and the ot
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | The strike check strikes a real recruiter            | False-strike target in the red-team set; handoff button on every strike reply; Contact panel always works; revoke command |
 | A base M4 is too slow for your voice clone           | Bake-off first (phase 3); Pocket-TTS runs on the CPU as a fallback; queue plus Thinking state                             |
-| The Mac runs out of memory alongside your other apps | Budget in §3.4; drop the separate aligner and use speech-to-text word times                                               |
+| The Mac runs out of memory alongside your other apps | Budget in §3.4; drop the aligner and time the lips in the browser from the audio (§6.2)                                   |
 | SSE streaming misbehaves through the Worker or the tunnel | Confirm in phase 5 with a test stream. Send a keep-alive comment every 15 s so idle streams aren't closed |
 | Cloudflare blocks AI crawlers by default             | §4.4 checklist at DNS move and launch; `robots.txt` check in §9                                                           |
 | A viral spike                                        | Rate limits, voicing queue, monthly spend cap, Cloudflare rate-limit rule                                                 |

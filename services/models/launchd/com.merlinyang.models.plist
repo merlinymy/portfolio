@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Keeps the model server (server.py) running: launchd, macOS's service manager, starts it when you
+  log in and starts it again whenever it stops. install.sh fills in @REPO@ (this repo's folder) and
+  @HOME@ (your home folder) and loads it; see services/models/README.md.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.merlinyang.models</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>@REPO@/services/models/.venv/bin/python</string>
+    <string>server.py</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>@REPO@/services/models</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- The models are already downloaded; don't reach out to Hugging Face on every start. -->
+    <key>HF_HUB_OFFLINE</key>
+    <string>1</string>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <!-- After a crash, wait 10 s before starting again. -->
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <!-- Visitors wait on it, so it gets an app's priority rather than a background job's. -->
+  <key>ProcessType</key>
+  <string>Interactive</string>
+  <key>StandardOutPath</key>
+  <string>@HOME@/Library/Logs/merlinyang-models.log</string>
+  <key>StandardErrorPath</key>
+  <string>@HOME@/Library/Logs/merlinyang-models.log</string>
+</dict>
+</plist>

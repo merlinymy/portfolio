@@ -1,39 +1,42 @@
 """Turns one sentence into your cloned voice plus the mouth-shape timing the face plays (plan §6.1).
 
 1. Tricky names are swapped for sound-it-out spellings (pronunciations.json), for the voice only.
-2. The voice model speaks the sentence.
+2. The voice (voices.py) speaks the sentence.
 3. The forced aligner, given the sentence and the audio, finds when each word starts and ends.
 4. Each word becomes speech sounds through the CMU Pronouncing Dictionary, and each sound one of the
    face's 15 mouth shapes (visemes.json), spread across the word's time.
 
-Writes <name>.wav and <name>.json, which holds:
+A Speaker loads the models once and then voices sentence after sentence; the model server
+(server.py) keeps one. Each result holds:
 - text: the sentence as shown on screen; spoken: what the voice was asked to say.
 - duration: the audio's length in seconds.
 - words: each on-screen word with its start and end in seconds, for revealing the text in step.
 - visemes: [seconds, shape] pairs; each shape holds until the next one. "sil" is the closed,
   resting mouth.
+- words and visemes are null if the aligner fails on a sentence; the browser then times the lips
+  from the playing audio instead (§6.2).
 
-Run: cd services/models && uv run speak.py "A sentence to say." [--model pocket] [--out <dir>]
-The output goes to knowledge/voice/speak/ unless --out says otherwise, since it's your voice.
+Run: cd services/models && uv run speak.py "A sentence to say." [--out <dir>]
+It writes <name>.wav and <name>.json to knowledge/voice/speak/ unless --out says otherwise, since
+it's your voice.
 """
 
 import argparse
 import json
 import re
-import sys
 import time
 import urllib.request
+import zlib
 from pathlib import Path
 
 import numpy as np
 import soundfile as sf
 
-HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE / "bakeoff"))
-from common import RATE, ROOT, pronunciations, respell  # noqa: E402
-from run import ENGINES, MODELS, resample  # noqa: E402
+from voices import PRONUNCIATIONS, RATE, ROOT, Pocket, pronunciations, resample, respell
 
 ALIGNER = "mlx-community/Qwen3-ForcedAligner-0.6B-8bit"
+ALIGNER_RATE = 16_000  # the aligner listens at 16 kHz
+MLX_CACHE_GB = 1
 # The dictionary file itself, under CMU's BSD-style license (the `cmudict` Python package is GPL).
 CMUDICT_VERSION = "74790861f652b15e4ac49015a90074ad62a27690"
 CMUDICT_URL = f"https://raw.githubusercontent.com/cmusphinx/cmudict/{CMUDICT_VERSION}/cmudict.dict"
@@ -115,7 +118,7 @@ def plain(word: str) -> str:
     return re.sub(r"[^a-z0-9']", "", word.lower())
 
 
-def mouth_shapes(words: list[tuple[list[str], float, float]], pronouncer: Pronouncer) -> list[list]:
+def mouth_shapes(words: list[tuple[list[str], float, float]], pronouncer) -> list[list]:
     """Spreads each word's sounds across its time, vowels longer than consonants, and lists where
     the mouth shape changes."""
     events: list[list] = []
@@ -145,10 +148,11 @@ def mouth_shapes(words: list[tuple[list[str], float, float]], pronouncer: Pronou
     return merged
 
 
-def align(aligner, wav: Path, groups: list[tuple[str, list[str]]]) -> list[tuple[list[str], float, float]]:
+def align(aligner, audio: np.ndarray, groups: list[tuple[str, list[str]]]) -> list[tuple[list[str], float, float]]:
     """Start and end of each on-screen word, from the aligner's times for the spoken words."""
     spoken = [w for _, ws in groups for w in ws]
-    items = [i for i in aligner.generate(str(wav), text=" ".join(spoken), language="English").items if plain(i.text)]
+    heard = resample(audio, RATE, ALIGNER_RATE)
+    items = [i for i in aligner.generate(heard, text=" ".join(spoken), language="English").items if plain(i.text)]
     if len(items) != len(spoken):
         raise RuntimeError(f"the aligner returned {len(items)} words for {len(spoken)}")
     out, k = [], 0
@@ -159,51 +163,76 @@ def align(aligner, wav: Path, groups: list[tuple[str, list[str]]]) -> list[tuple
     return out
 
 
+class Speaker:
+    """Your voice plus lip timing, with the models loaded once."""
+
+    def __init__(self):
+        import mlx.core as mx
+        from mlx_audio.stt import load
+
+        # MLX (the aligner's library) keeps freed graphics memory for reuse with no limit, which
+        # would let an always-on server grow; 1 GB is plenty for the aligner.
+        mx.set_cache_limit(MLX_CACHE_GB * 2**30)
+        self.voice = Pocket()
+        self.aligner = load(ALIGNER)
+        self.pronouncer = Pronouncer()
+        self._table: dict[str, str] = {}
+        self._table_version = None
+        self.say("Thanks for stopping by.")  # the first sentence is slow, so it's spent here
+
+    def table(self) -> dict[str, str]:
+        """The sound-it-out spellings, re-read whenever pronunciations.json changes."""
+        version = PRONUNCIATIONS.stat().st_mtime if PRONUNCIATIONS.exists() else None
+        if version != self._table_version:
+            self._table, self._table_version = pronunciations(), version
+        return self._table
+
+    def say(self, text: str) -> tuple[np.ndarray, dict]:
+        """The sentence's audio (mono, RATE samples a second) and its timing."""
+        groups = respell(text, self.table())
+        spoken_text = " ".join(w for _, ws in groups for w in ws)
+        started = time.perf_counter()
+        # The same sentence always gets the same random seed, so it's voiced the same way each time.
+        seed = zlib.crc32(spoken_text.encode())
+        audio = resample(np.concatenate(list(self.voice.say(spoken_text, seed))), self.voice.rate)
+        voiced = time.perf_counter() - started
+        try:
+            timed = align(self.aligner, audio, groups)
+            words = [{"text": shown, "start": round(s, 3), "end": round(e, 3)} for (shown, _), (_, s, e) in zip(groups, timed)]
+            shapes = mouth_shapes(timed, self.pronouncer)
+        except RuntimeError:
+            words = shapes = None
+        result = {
+            "text": text,
+            "spoken": spoken_text,
+            "duration": round(len(audio) / RATE, 3),
+            "words": words,
+            "visemes": shapes,
+            "timing": {"voice_s": round(voiced, 3), "align_s": round(time.perf_counter() - started - voiced, 3)},
+        }
+        return audio, result
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("text")
-    parser.add_argument("--model", default="pocket", choices=list(MODELS))
     parser.add_argument("--out", type=Path, default=ROOT / "knowledge/voice/speak")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     name = re.sub(r"[^a-z0-9]+", "-", args.text.lower()).strip("-")[:48]
 
-    from mlx_audio.stt import load
-
     started = time.perf_counter()
-    kind, repo, options = MODELS[args.model]
-    voice = ENGINES[kind](repo, options)
-    list(voice.say("Thanks for stopping by.", 0))
-    aligner = load(ALIGNER)
-    pronouncer = Pronouncer()
+    speaker = Speaker()
     print(f"loaded in {time.perf_counter() - started:.1f} s")
 
-    groups = respell(args.text, pronunciations())
-    spoken_text = " ".join(w for _, ws in groups for w in ws)
-
-    started = time.perf_counter()
-    audio = resample(np.concatenate(list(voice.say(spoken_text, 1))), voice.rate)
-    voiced = time.perf_counter() - started
+    audio, result = speaker.say(args.text)
     wav = args.out / f"{name}.wav"
     sf.write(wav, audio, RATE)
-
-    started = time.perf_counter()
-    timed = align(aligner, wav, groups)
-    shapes = mouth_shapes(timed, pronouncer)
-    aligned = time.perf_counter() - started
-
-    result = {
-        "text": args.text,
-        "spoken": spoken_text,
-        "audio": wav.name,
-        "duration": round(len(audio) / RATE, 3),
-        "words": [{"text": shown, "start": round(s, 3), "end": round(e, 3)} for (shown, _), (_, s, e) in zip(groups, timed)],
-        "visemes": shapes,
-    }
-    (args.out / f"{name}.json").write_text(json.dumps(result, indent=1) + "\n")
-    duration = len(audio) / RATE
-    print(f"voiced {duration:.1f} s of audio in {voiced:.1f} s (RTF {voiced / duration:.2f}), aligned in {aligned:.2f} s")
-    print(f"wrote {wav} and {name}.json: {len(timed)} words, {len(shapes)} mouth shapes")
+    (args.out / f"{name}.json").write_text(json.dumps({**result, "audio": wav.name}, indent=1) + "\n")
+    t = result["timing"]
+    print(f"voiced {result['duration']:.1f} s of audio in {t['voice_s']:.1f} s (RTF {t['voice_s'] / result['duration']:.2f}), aligned in {t['align_s']:.2f} s")
+    timed = "no word timing (the aligner failed)" if result["words"] is None else f"{len(result['words'])} words, {len(result['visemes'])} mouth shapes"
+    print(f"wrote {wav} and {name}.json: {timed}")
 
 
 if __name__ == "__main__":

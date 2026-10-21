@@ -13,6 +13,7 @@ career-only chat. The full plan is in
 | `apps/site/` | The website: Astro builds plain HTML, with React + TypeScript for the interactive parts |
 | `content/` | Profile text (experience, projects, skills, common questions) that the site is built from |
 | `tools/FaceScan.swiftpm/` | iPhone app that captures the face mesh and expression clips |
+| `services/models/` | Your cloned voice and the lip-timing model, run natively on the Mac, and the model server the chat calls ([services/models/README.md](services/models/README.md)) |
 | `docs/` | Plans and design notes |
 | `wrangler.jsonc` | Cloudflare Workers config: which folder to publish, and later the `/api` route |
 

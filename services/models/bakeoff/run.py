@@ -23,6 +23,7 @@ import numpy as np
 import soundfile as sf
 
 from common import OUT, RATE, REF, YOU, level, lines, pronunciations, sentences, spoken, words
+from voices import Pocket, resample
 
 QWEN_SMALL = "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-8bit"
 # name: (engine, model repo, options). Options:
@@ -108,33 +109,7 @@ class Chatterbox:
             yield np.array(part.audio, dtype=np.float32)
 
 
-class Pocket:
-    """Pocket-TTS on the CPU through PyTorch, leaving the graphics chip free."""
-
-    def __init__(self, _repo: None, options: dict):
-        from pocket_tts import TTSModel
-
-        self.model = TTSModel.load_model(language=options.get("language"))
-        self.rate = self.model.sample_rate
-        self.voice = self.model.get_state_for_audio_prompt(str(REF / "ref.wav"), truncate=True)
-
-    def say(self, text: str, seed: int):
-        import torch
-
-        torch.manual_seed(seed)
-        for part in self.model.generate_audio_stream(self.voice, text):
-            yield part.numpy().astype(np.float32)
-
-
 ENGINES = {"qwen": Qwen, "chatterbox": Chatterbox, "pocket": Pocket}
-
-
-def resample(audio: np.ndarray, rate: int) -> np.ndarray:
-    if rate == RATE:
-        return audio
-    from scipy.signal import resample_poly
-
-    return resample_poly(audio, RATE, rate).astype(np.float32)
 
 
 def main() -> None:
