@@ -1,0 +1,18 @@
+# The voice models that run natively on the Mac (plan §3.2, §6): text-to-speech in your cloned
+# voice, the forced aligner and speech-to-text, all through mlx-audio on the graphics chip.
+# Pocket-TTS runs on the CPU through PyTorch, so it's an optional extra used only by the bake-off.
+[project]
+name = "portfolio-models"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  # Pinned a week or more behind the newest release, so a bad release has time to be caught.
+  "mlx-audio[tts,stt]==0.5.9",
+  "soundfile>=0.12",
+]
+
+[project.optional-dependencies]
+pocket = ["pocket-tts==3.3.0"]
+
+[tool.uv]
+package = false

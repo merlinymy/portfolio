@@ -11,7 +11,7 @@ Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answe
 | 1. Capture | Done. Hair photos dropped: the hair comes from a free model, and the head is rebuilt from your scan and the three face photos (§5.1). See below. |
 | 2a. Moving face | Done. Built: the converter (`npm run face`); the 3D face with clips, eyes following the pointer or a finger (tilt dropped, §5.5); all 14 effects; the face states; the `?lab` panel with a lip-sync strength control; the six floating buttons (three movement styles in the lab) and the pop-up panels (§4.2); the still image for browsers without WebGL and the link-preview image (`npm run face:still`); browser tests (`npm run test:e2e`, 9 passing). |
 | 2b. Head and hair | **Paused (2026-10-21).** The core features (phases 3–7) come first. The realistic head, hair and bust will be modeled in Blender later and dropped in then (§5.8). The face-mesh-only wireframe stays as an artistic option. The code-generated head, hair and realistic mode stay in the lab until the Blender model replaces them. The site shows the face only, and the head file downloads only in the lab. |
-| 3. Voice | **Started 2026-10-21** on the MacBook Air: the voice bake-off (§6.3). |
+| 3. Voice | **In progress, on the MacBook Air (2026-10-21).** The bake-off ran for four voices; Pocket-TTS waits for your Hugging Face login (§6.3). Qwen3-TTS 0.6B leads: it sounds most like you by a voiceprint estimate and runs faster than real time. `services/models/speak.py` turns a sentence into your voice plus word timing and mouth shapes. Next: you listen and pick, then the speeds are re-measured on the Mac mini. |
 
 **Phase 1 details:**
 - **Captured in the app,** each file checked:
@@ -725,6 +725,36 @@ written, approved and voiced ahead of time, and the chat never writes or voices 
 each model sounds and roughly how fast it is. It has no fan and slows down under long loads, and its
 24 GB of memory is more than the mini's 16 GB. So the speeds are re-measured on the mini before
 anything is decided on speed.
+
+**First results on the MacBook Air (2026-10-21).** Every voice copied your reference recording
+(`sample.m4a`; Qwen3-TTS uses its first 21 s with the transcript, Chatterbox its first 10–15 s) and
+read the same 18 lines from your recording script. `services/models/README.md` explains how to
+rerun them; the listening page is `knowledge/voice/bakeoff/index.html`.
+
+| Voice | Sounds like you | Speed (RTF) | First sound | Short sentence, whole | Memory |
+|---|---|---|---|---|---|
+| Qwen3-TTS 0.6B | 0.98 | 0.73 | 0.9 s | 1.9 s | 4.3 GB |
+| Qwen3-TTS 1.7B | 0.97 | 1.04 | 1.6 s | 2.4 s | 5.1 GB |
+| Chatterbox Turbo | 0.92 | 0.78 | 3.1 s | 1.9 s | 5.6 GB |
+| Chatterbox Turbo, 8-bit | 0.92 | 0.50 | 2.1 s | 1.3 s | 3.9 GB |
+
+- **Sounds like you:** an estimate from a voiceprint model, which turns a recording into numbers
+  that match for the same voice. Your own takes score 1.00 against each other, and a stranger (the
+  Mac's built-in voices) scores 0.73–0.78. Your ears decide.
+- **All four say the words right.** Parakeet's transcript of each model matches the script as
+  closely as its transcript of you.
+- **Speed (RTF)** is seconds of computing per second of speech; under 1 keeps ahead of playback.
+  Qwen3-TTS 1.7B is just slower than real time on the Air.
+- **Memory is higher than the 1–2 GB estimated in §3.4**, at 4–6 GB per voice. That's even with
+  MLX's reuse cache capped at 1 GB: without the cap, it held 18 GB.
+- **First sound** is the typical wait for a sentence's first audio. Qwen3-TTS streams, handing
+  over audio in pieces; without streaming it decodes your whole reference clip again for every
+  sentence, which adds about 3 s. Chatterbox is faster voicing each sentence in one piece, so its
+  first sound is the whole sentence.
+- **Short sentence, whole** is the time to voice all of a sentence of 8 words or fewer, which is
+  what the chat needs before it can time the lips.
+- **Lip timing.** `speak.py` voiced a 14-word sentence (7.3 s of speech) in 4.7 s, then timed the
+  words and mouth shapes in 0.3 s.
 
 ---
 
