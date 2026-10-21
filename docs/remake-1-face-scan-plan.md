@@ -10,7 +10,7 @@ Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answe
 | 0b. Domain | Done: merlinyang.com's DNS is on Cloudflare (registration stays at Namecheap), and the current Vercel site still loads. There was no email forwarding to recreate. The tunnel hostname comes in phase 5. |
 | 1. Capture | Done. Hair photos dropped: the hair comes from a free model, and the head is rebuilt from your scan and the three face photos (§5.1). See below. |
 | 2a. Moving face | Done. Built: the converter (`npm run face`); the 3D face with clips, eyes following the pointer or a finger (tilt dropped, §5.5); all 14 effects; the face states; the `?lab` panel with a lip-sync strength control; the six floating buttons (three movement styles in the lab) and the pop-up panels (§4.2); the still image for browsers without WebGL and the link-preview image (`npm run face:still`); browser tests (`npm run test:e2e`, 9 passing). |
-| 2b. Head and hair | Built again (§5.8): the head, neck, shoulders and ears are generated around your scan and checked against your three photos; realistic mode to compare in the lab on this Mac. Waiting for your look. Then phase 3. |
+| 2b. Head and hair | **Next session: a proper 3D model in Blender** for the realistic version (head, hair and bust), built from your scan and the three photos (decided 2026-10-21, §5.8). The face-mesh-only wireframe stays as an artistic option. The code-generated head, hair and realistic mode stay in the lab until the Blender model replaces them. Then phase 3. |
 
 **Phase 1 details:**
 - **Captured in the app,** each file checked:
@@ -602,6 +602,23 @@ opens in Blender):
   - The converter samples your three photos onto the face's points.
   - A lab "photo color" effect blends them in. It's off by default, to keep the wireframe palette.
   - Only the 1,220 point colors are published, not the photos.
+
+**Decision after comparing (2026-10-21): realistic means a proper 3D model, made in Blender.**
+- **Why.** The code-generated head, hair and bust, and the photo-textured realistic mode built on
+  them, showed that a convincing realistic version (head, hair and bust) needs a properly modeled
+  3D model. Generated shapes and strands only approximate it.
+- **Next session, in Blender** (5.0.1 is installed):
+  - Model the head, hair and bust as a proper 3D model, around the scanned face.
+  - Inputs to use as reference:
+    - `face.glb`: the scan, with its UVs and point colors.
+    - `face-texture.jpg`: the skin image, local only.
+    - `head.glb`: the generated head, as a starting shape.
+    - The three texture photos. Each has a camera model fitted in `tools/head/build.ts`, and
+      `HEAD_OVERLAY` draws a model over the photos to compare outlines.
+- **The face mesh stays too.** The points-and-edges face is a cool interpretation and an artistic
+  choice, so the face-mesh-only look is kept alongside the realistic model.
+- **Until then.** The generated head, hair and realistic mode stay in the code and the lab as
+  interim versions. Which look the live site shows by default is still to decide.
 
 **Realistic mode, to compare in the lab (added 2026-10-21):**
 - **The face as a solid surface.** It's textured with your photos and softly lit, with a slider
