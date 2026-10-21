@@ -22,16 +22,43 @@ import {
 import type { FaceData } from "./data";
 import { prefersReducedMotion, type LookInput } from "./input";
 import { Babbler, ClipBlend, ClipPlayer, Gaze, LipSync, Pose, approach, clamp, mixExpressions } from "./motion";
-import { ALWAYS_ON, EFFECTS, STATES, STRIKE_SECONDS, control, settings, type EffectName, type FaceState } from "./settings";
+import {
+  ALWAYS_ON,
+  EFFECTS,
+  STATES,
+  STRIKE_SECONDS,
+  control,
+  settings,
+  type ButtonStyle,
+  type EffectName,
+  type FaceState,
+} from "./settings";
 import { createMaterial, createUniforms } from "./shaders";
 
 const DEG = Math.PI / 180;
 export const FOV = 30;
-/** The area kept in view around the face, in meters (the scan is about 16 × 18 cm). */
-const FRAME = { width: 0.21, height: 0.27, centerY: 0, centerZ: 0.02 };
+/**
+ * The area kept in view around the face, in meters (the scan is about 16 × 18 cm). It leaves room
+ * for the buttons, and looking slightly above the face's middle sets the face a little low, clear
+ * of the name in the top-left corner.
+ */
+const FRAME = { width: 0.21, height: 0.32, centerY: 0.015, centerZ: 0.02 };
 /** How close a click must land to a point to start a ripple, in CSS pixels. */
 const CLICK_RADIUS = 36;
 const INTRO_SECONDS = 2.4;
+/**
+ * Where the six profile buttons sit around the face, in degrees counterclockwise from the
+ * viewer's right, in the nav's order: About, Experience, Projects, Skills, Résumé, Contact.
+ */
+const BUTTON_ANGLES = [145, 35, 180, 0, 215, -35];
+/** The buttons float around the head only where there's room; narrower screens use CSS rows. */
+const floatQuery = typeof matchMedia === "function" ? matchMedia("(min-width: 700px)") : undefined;
+
+/** The page's profile nav and its six links, which the face positions around the head. */
+export interface FaceButtons {
+  nav: HTMLElement;
+  links: HTMLElement[];
+}
 
 /** A repeatable random sequence, so the scatter and twinkle look the same on every visit. */
 function random(seed: number) {
@@ -153,6 +180,9 @@ function buildRig(data: FaceData) {
     brightness: 1,
     color: new Color(settings.look.baseColor),
     nextRipple: 0,
+    /** Sideways camera offset in meters, for an open panel. */
+    shift: 0,
+    floating: false,
   };
 }
 
@@ -169,8 +199,9 @@ const scratch = {
   hit: new Vector3(),
 };
 
-export function Face({ data, input }: { data: FaceData; input: LookInput }) {
+export function Face({ data, input, buttons }: { data: FaceData; input: LookInput; buttons?: FaceButtons }) {
   const head = useRef<Group>(null);
+  const distance = useRef(0.5);
   const scene = useMemo(() => buildScene(data), [data]);
   const rig = useMemo(() => buildRig(data), [data]);
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
@@ -182,8 +213,8 @@ export function Face({ data, input }: { data: FaceData; input: LookInput }) {
   useEffect(() => {
     const t = Math.tan((FOV / 2) * DEG);
     const aspect = size.width / Math.max(1, size.height);
-    const distance = Math.max(FRAME.height / 2 / t, FRAME.width / 2 / (t * aspect));
-    camera.position.set(0, FRAME.centerY, FRAME.centerZ + distance);
+    distance.current = Math.max(FRAME.height / 2 / t, FRAME.width / 2 / (t * aspect));
+    camera.position.set(0, FRAME.centerY, FRAME.centerZ + distance.current);
     camera.lookAt(0, FRAME.centerY, FRAME.centerZ);
     camera.updateProjectionMatrix();
   }, [camera, size]);
@@ -197,6 +228,15 @@ export function Face({ data, input }: { data: FaceData; input: LookInput }) {
     const m = settings.motion;
     const reduced = prefersReducedMotion();
     const u = scene.uniforms;
+
+    // With a panel open on the right, slide the view so the face sits in the space beside it.
+    const visibleWidth =
+      2 * distance.current * Math.tan((FOV / 2) * DEG) * (frame.size.width / Math.max(1, frame.size.height));
+    const shift = (control.panelInset / 2 / Math.max(1, frame.size.width)) * visibleWidth;
+    rig.shift = approach(rig.shift, shift, dt, reduced ? 0 : 0.3);
+    camera.position.x = rig.shift;
+    camera.lookAt(rig.shift, FRAME.centerY, FRAME.centerZ);
+    camera.updateMatrixWorld();
 
     // State changes pick the base clip; a strike shows briefly, then returns.
     if (control.state === "strike" && rig.state === "strike" && now - rig.stateSince > STRIKE_SECONDS) {
@@ -226,11 +266,18 @@ export function Face({ data, input }: { data: FaceData; input: LookInput }) {
     rig.loudness = approach(rig.loudness, speaking ? rig.lip.openness : 0, dt, 0.05);
 
     // 4. Look-at: the head turns part of the way, the eyes the rest, within the captured range.
-    const following = input.active ? state.follow : 0;
+    // An open panel or a keyboard-focused button takes the face's attention from the pointer.
+    let [targetX, targetY] = [input.x, input.y];
+    let steering = input.active;
+    if (control.attention) {
+      [targetX, targetY] = input.normalize(control.attention.x, control.attention.y);
+      steering = true;
+    }
+    const following = steering ? state.follow : 0;
     rig.follow = approach(rig.follow, following, dt, 0.4);
     const reach = m.reach * DEG * following;
-    rig.look.yaw = approach(rig.look.yaw, input.x * reach, dt, input.active ? 0.05 : 0.8);
-    rig.look.pitch = approach(rig.look.pitch, input.y * reach * 0.75, dt, input.active ? 0.05 : 0.8);
+    rig.look.yaw = approach(rig.look.yaw, targetX * reach, dt, steering ? 0.05 : 0.8);
+    rig.look.pitch = approach(rig.look.pitch, targetY * reach * 0.75, dt, steering ? 0.05 : 0.8);
     const headScale = reduced ? 0.5 : 1;
     const headYaw = clamp(rig.look.yaw * m.headShare, -m.headYaw * DEG, m.headYaw * DEG) * headScale;
     const headPitch = clamp(rig.look.pitch * m.headShare, -m.headPitch * DEG, m.headPitch * DEG) * headScale;
@@ -373,6 +420,32 @@ export function Face({ data, input }: { data: FaceData; input: LookInput }) {
     const rect = frame.gl.domElement.getBoundingClientRect();
     scratch.v.set(0, 0.02, 0.03).project(camera);
     input.setCenter(rect.left + ((scratch.v.x + 1) / 2) * rect.width, rect.top + ((1 - scratch.v.y) / 2) * rect.height);
+
+    // The profile buttons float around the head where there's room (plan §4.2).
+    if (buttons) {
+      const floating = floatQuery?.matches ?? false;
+      if (floating !== rig.floating) {
+        rig.floating = floating;
+        buttons.nav.classList.toggle("buttons-floating", floating);
+        if (!floating) for (const link of buttons.links) link.style.transform = "";
+      }
+      if (floating) {
+        const b = settings.buttons;
+        const style: ButtonStyle = reduced ? "ring" : b.style;
+        buttons.links.forEach((link, i) => {
+          const base = BUTTON_ANGLES[i % BUTTON_ANGLES.length] * DEG;
+          const angle = style === "orbit" ? base + now * 0.06 * b.speed : base;
+          scratch.v.set(Math.cos(angle) * 0.118 * b.spread, Math.sin(angle) * 0.118 * b.spread + 0.005, 0.03);
+          if (style === "ring" && !reduced) scratch.v.y += Math.sin(now * 0.9 * b.speed + i * 1.3) * 0.004 * b.bob;
+          // "head" turns with the face; the other styles stay level.
+          if (style === "head") scratch.v.applyMatrix4(group.matrixWorld);
+          scratch.v.project(camera);
+          const x = ((scratch.v.x + 1) / 2) * frame.size.width;
+          const y = ((1 - scratch.v.y) / 2) * frame.size.height;
+          link.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%)`;
+        });
+      }
+    }
   });
 
   return (

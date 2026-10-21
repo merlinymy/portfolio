@@ -59,6 +59,14 @@ export class LookInput {
     if (!tiltNeedsPermission() && matchMedia("(pointer: coarse)").matches) this.startTilt();
   }
 
+  /** A point in client pixels, as -1 to 1 across the window from the face's center. */
+  normalize(clientX: number, clientY: number): [number, number] {
+    return [
+      Math.max(-1, Math.min(1, (clientX - this.centerX) / (innerWidth / 2))),
+      Math.max(-1, Math.min(1, -(clientY - this.centerY) / (innerHeight / 2))),
+    ];
+  }
+
   /** The face's center on screen, in client pixels, so pointer positions are measured from it. */
   setCenter(x: number, y: number) {
     this.centerX = x;
@@ -99,8 +107,7 @@ export class LookInput {
     if (touch && e.type === "pointermove" && this.source !== "touch") return;
     this.source = touch ? "touch" : "pointer";
     this.active = true;
-    this.x = Math.max(-1, Math.min(1, (e.clientX - this.centerX) / (innerWidth / 2)));
-    this.y = Math.max(-1, Math.min(1, -(e.clientY - this.centerY) / (innerHeight / 2)));
+    [this.x, this.y] = this.normalize(e.clientX, e.clientY);
   }
 
   private onRelease(e: PointerEvent) {

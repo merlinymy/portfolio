@@ -5,7 +5,7 @@
 import { Canvas } from "@react-three/fiber";
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { loadFace, type FaceData } from "./data";
-import { FOV, Face } from "./Face";
+import { FOV, Face, type FaceButtons } from "./Face";
 import { LookInput, prefersReducedMotion, tiltNeedsPermission } from "./input";
 import { control, settings } from "./settings";
 
@@ -20,7 +20,7 @@ function hasWebGL2() {
   }
 }
 
-export default function FaceCanvas({ container }: { container: HTMLElement }) {
+export default function FaceCanvas({ container, buttons }: { container: HTMLElement; buttons?: FaceButtons }) {
   const [data, setData] = useState<FaceData>();
   const [input, setInput] = useState<LookInput>();
   const [visible, setVisible] = useState(true);
@@ -67,7 +67,7 @@ export default function FaceCanvas({ container }: { container: HTMLElement }) {
     <>
       <div className="face-canvas" aria-hidden="true">
         <Canvas dpr={[1, 2]} frameloop={visible ? "always" : "never"} camera={{ fov: FOV, near: 0.01, far: 5 }}>
-          <Face data={data} input={input} />
+          <Face data={data} input={input} buttons={buttons} />
         </Canvas>
       </div>
       {askTilt && (

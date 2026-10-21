@@ -8,7 +8,16 @@
  */
 import { Leva, button, buttonGroup, folder, useControls } from "leva";
 import type { FaceData } from "../face/data";
-import { EFFECTS, FACE_STATES, control, settings, type EffectMode, type EffectName } from "../face/settings";
+import {
+  BUTTON_STYLES,
+  EFFECTS,
+  FACE_STATES,
+  control,
+  settings,
+  type ButtonStyle,
+  type EffectMode,
+  type EffectName,
+} from "../face/settings";
 
 function slider<T extends object, K extends keyof T>(
   target: T,
@@ -89,6 +98,22 @@ export default function Lab({ data }: { data: FaceData }) {
         m.tiltInvert = v;
       },
     },
+  });
+
+  const b = settings.buttons;
+  useControls("Buttons", {
+    style: {
+      value: b.style,
+      label: "movement",
+      options: [...BUTTON_STYLES],
+      hint: "head: turn with the face · orbit: circle slowly · ring: still, with a bob",
+      onChange: (v: ButtonStyle) => {
+        b.style = v;
+      },
+    },
+    spread: slider(b, "spread", 0.7, 1.6, 0.01, "distance from face"),
+    speed: slider(b, "speed", 0, 3, 0.05, "speed"),
+    bob: slider(b, "bob", 0, 3, 0.05, "bob"),
   });
 
   const look = settings.look;

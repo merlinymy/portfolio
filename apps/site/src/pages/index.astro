@@ -42,19 +42,22 @@ const formatEducation = (e: (typeof me.education)[number]) =>
   siteName={me.name}
   jsonLd={personJsonLd(about, skills, Astro.site!)}
 >
-  <header class="hero">
-    <h1>{me.name}</h1>
-    <p class="headline">{me.headline}</p>
-    <p class="tagline">{me.tagline}</p>
-  </header>
+  <!-- With JavaScript, these three share the first screen: the name over the face, the buttons around it. -->
+  <div class="home">
+    <header class="hero">
+      <h1>{me.name}</h1>
+      <p class="headline">{me.headline}</p>
+      <p class="tagline">{me.tagline}</p>
+    </header>
 
-  <FaceStage client:idle />
+    <FaceStage client:idle />
 
-  <nav class="profile-nav" aria-label="Profile">
-    <ul>
-      {PANELS.map((panel) => <li><a href={`#${panel.id}`}>{panel.label}</a></li>)}
-    </ul>
-  </nav>
+    <nav class="profile-nav" aria-label="Profile">
+      <ul>
+        {PANELS.map((panel) => <li><a href={`#${panel.id}`}>{panel.label}</a></li>)}
+      </ul>
+    </nav>
+  </div>
 
   <main>
     <Panel id="about" title="About">

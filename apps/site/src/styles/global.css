@@ -1,4 +1,8 @@
-/* A readable dark page, with the face stage under the name. The floating buttons and pop-up panels come next in phase 2. */
+/*
+ * Without JavaScript: a readable dark page, with the profile sections one after another.
+ * With JavaScript (the "js" class): the name, the face and the six buttons share the first screen,
+ * and the sections open as pop-up panels ("js-panels", plan §4.2).
+ */
 :root {
   color-scheme: dark;
   --bg: #141414;
@@ -167,4 +171,166 @@ footer {
   color: var(--muted);
   font-size: 0.9rem;
   padding-block: 2rem 3rem;
+}
+
+/* ---- First screen with JavaScript ---- */
+
+.js .home {
+  position: relative;
+  height: 100svh;
+  min-height: 30rem;
+  overflow: hidden;
+}
+
+.js .face-stage {
+  position: absolute;
+  inset: 0;
+  height: auto;
+}
+
+.js .hero {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  max-width: 34rem;
+  margin: 0;
+  padding: 1.5rem;
+  pointer-events: none;
+}
+
+.js .hero h1 {
+  font-size: clamp(1.75rem, 4vw, 3rem);
+}
+
+/* By default the buttons sit in centered rows at the bottom of the screen. */
+.js .profile-nav {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 2;
+  max-width: none;
+  padding: 1rem;
+  pointer-events: none;
+}
+
+.js .profile-nav ul {
+  justify-content: center;
+  margin: 0;
+}
+
+.js .profile-nav a {
+  pointer-events: auto;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+/* On wide screens the face's render loop places each button around the head. */
+.js .profile-nav.buttons-floating {
+  inset: 0;
+  padding: 0;
+}
+
+.js .profile-nav.buttons-floating li {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* While a panel is open the buttons fade out, since the face slides aside and they'd follow it off screen. */
+.js .profile-nav {
+  transition: opacity 0.2s;
+}
+
+.js-panels:has(.panel-dialog[open]) .profile-nav {
+  opacity: 0;
+}
+
+/* The sections have moved into their pop-ups, so the page below the first screen is empty. */
+.js-panels main {
+  display: none;
+}
+
+/* ---- Pop-up panels ---- */
+
+/* Phones: the panel fills the screen. */
+.panel-dialog {
+  width: 100vw;
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* Wide screens: a sheet on the right, with the face still visible beside it. */
+@media (min-width: 900px) {
+  .panel-dialog {
+    width: min(38rem, 50vw);
+    margin: 0 0 0 auto;
+    border-left: 1px solid var(--border);
+  }
+}
+
+.panel-dialog::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
+
+.panel-body {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.5rem 1.5rem 3rem;
+}
+
+.panel-dialog .panel {
+  border-top: 0;
+  padding-block: 0;
+}
+
+/* Leaves room for the close button beside the heading. */
+.panel-dialog h2 {
+  padding-right: 3.5rem;
+}
+
+.panel-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 1;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.panel-close:hover,
+.panel-close:focus-visible {
+  border-color: var(--accent);
+}
+
+html:has(.panel-dialog[open]) {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel-dialog[open] {
+    animation: panel-in 0.25s ease-out;
+  }
+}
+
+@keyframes panel-in {
+  from {
+    transform: translateX(2rem);
+    opacity: 0;
+  }
 }

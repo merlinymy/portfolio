@@ -30,6 +30,8 @@ const jsonLdText = jsonLd && JSON.stringify(jsonLd).replace(/</g, "\\u003c");
     <meta property="og:url" content={canonical} />
     <meta name="twitter:card" content="summary" />
     <meta name="generator" content={Astro.generator} />
+    <!-- Lets the first-screen layout for the face apply before the page draws, so it doesn't jump. -->
+    <script is:inline>document.documentElement.classList.add("js");</script>
     {jsonLdText && <script is:inline type="application/ld+json" set:html={jsonLdText} />}
   </head>
   <body>

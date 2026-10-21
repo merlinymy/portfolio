@@ -9,7 +9,7 @@ Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answe
 | 0. Site setup | Done: Astro + React site with six crawlable panels (commit `65c9432`), live on Cloudflare Workers at a temporary `workers.dev` address (commit `5cb11a0`). Deploys automatically on each push to this branch. |
 | 0b. Domain | Done: merlinyang.com's DNS is on Cloudflare (registration stays at Namecheap), and the current Vercel site still loads. There was no email forwarding to recreate. The tunnel hostname comes in phase 5. |
 | 1. Capture | Done. Hair photos dropped: the hair comes from a free model, and the head is rebuilt from your scan and the three face photos (§5.1). See below. |
-| 2a. Moving face | In progress. Done: the converter (`npm run face`); the 3D face with clips, eyes following the pointer, finger and tilt; all 14 effects; the face states; the `?lab` panel with a lip-sync strength control. Next: the floating buttons and pop-up panels (§4.2), a still image for devices without WebGL, tests (§9). |
+| 2a. Moving face | In progress. Done: the converter (`npm run face`); the 3D face with clips, eyes following the pointer, finger and tilt; all 14 effects; the face states; the `?lab` panel with a lip-sync strength control; the six floating buttons (three movement styles in the lab) and the pop-up panels (§4.2). Next: a still image for devices without WebGL, tests (§9). |
 
 **Phase 1 details:**
 - **Captured in the app,** each file checked:
@@ -28,6 +28,10 @@ Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answe
   mouth shapes with pauses. The lab can also hold any one mouth shape, to check the captures.
 - **Left and right looks.** The eye-range capture's "left" look went to your right. The site tells
   the sides apart by where the eyes pointed, so this needs no recapture.
+- **Buttons and panels.** On screens 700 px and wider the buttons float around the head; on
+  narrower screens they sit in rows at the bottom, until the chat box arrives in phase 6 and they
+  move into an arc above it. Panels open as a sheet on the right on screens 900 px and wider (the
+  face slides left and glances toward it) and fill the screen below that.
 - **Download size.** The 3D code is 260 KB compressed, mostly three.js and React Three Fiber, and
   loads after the page text. The face files add about 165 KB. Replacing React Three Fiber with plain
   three.js would save an estimated 60–100 KB **(estimate)**, if load time turns out to matter.

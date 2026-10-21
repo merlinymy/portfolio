@@ -20,6 +20,12 @@
     "tiltRange": 25,
     "tiltInvert": false
   },
+  "buttons": {
+    "style": "head",
+    "spread": 1,
+    "speed": 1,
+    "bob": 1
+  },
   "states": {
     "sleeping": { "color": "#6f8fd6", "brightness": 0.55 },
     "idle": { "color": "#9cc9ff", "brightness": 1 },

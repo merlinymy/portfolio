@@ -100,9 +100,24 @@ export interface Settings {
     tiltRange: number;
     tiltInvert: boolean;
   };
+  /** How the six profile buttons move around the head on wide screens (plan §4.2). */
+  buttons: {
+    style: ButtonStyle;
+    /** Distance from the face, 1 = just outside its outline. */
+    spread: number;
+    speed: number;
+    bob: number;
+  };
   states: Record<FaceState, { color: string; brightness: number }>;
   effects: Record<EffectName, EffectSettings>;
 }
+
+/**
+ * "head": fixed to points around the head, so they turn with the face. "orbit": a slow circle
+ * around it. "ring": still, with a gentle bob. With reduced motion the buttons always stay still.
+ */
+export const BUTTON_STYLES = ["head", "orbit", "ring"] as const;
+export type ButtonStyle = (typeof BUTTON_STYLES)[number];
 
 export const DEFAULT_SETTINGS = defaults as Settings;
 export const settings: Settings = structuredClone(DEFAULT_SETTINGS);
@@ -118,6 +133,10 @@ export const control = {
   viseme: "off",
   /** Set to replay the assemble intro on the next frame. */
   replayIntro: false,
+  /** A point on screen (client pixels) the face looks at instead of the pointer: an open panel or a focused button. */
+  attention: null as { x: number; y: number } | null,
+  /** Width of a panel open on the right, in pixels; the face moves into the space beside it. */
+  panelInset: 0,
 
   setState(next: FaceState) {
     if (next === "strike" && this.state !== "strike") this.previous = this.state;
