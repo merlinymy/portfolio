@@ -26,7 +26,19 @@ Run from the repo root, with Node 22.22 or newer:
 | `npm run dev` | Local dev server at http://localhost:4321 |
 | `npm run build` | Builds the static site into `apps/site/dist/` |
 | `npm run check` | Type-checks the site |
+| `npm run face` | Turns the private face capture in `knowledge/faceScan/` into the site's `apps/site/public/face/` files ([tools/face/README.md](tools/face/README.md)) |
 | `npx wrangler dev` | After a build, serves `apps/site/dist/` the way Cloudflare will, at http://localhost:8787 |
+
+## The effects lab
+
+Add `?lab` to the address, for example http://localhost:4321/?lab. A control panel opens with:
+- every face effect, with on, off or "auto" (whatever the face's current state uses)
+- the motion settings
+- buttons for each face state
+
+**Export settings** copies the current values. Paste them over
+`apps/site/src/island/face/settings.json` to make them the defaults. Changes made in the panel
+only last until you reload the page.
 
 ## AI usage
 

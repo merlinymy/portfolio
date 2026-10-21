@@ -1,0 +1,49 @@
+{
+  "look": {
+    "pointSize": 1.1,
+    "pointOpacity": 0.95,
+    "lineOpacity": 0.2,
+    "eyeOpacity": 1,
+    "eyeSize": 1.5,
+    "eyeGlow": 1.6,
+    "baseColor": "#9cc9ff"
+  },
+  "motion": {
+    "reach": 40,
+    "headYaw": 25,
+    "headPitch": 15,
+    "headShare": 0.55,
+    "headSmoothing": 0.22,
+    "eyeSmoothing": 0.06,
+    "clipHead": 1,
+    "lipSync": 1.6,
+    "tiltRange": 25,
+    "tiltInvert": false
+  },
+  "states": {
+    "sleeping": { "color": "#6f8fd6", "brightness": 0.55 },
+    "idle": { "color": "#9cc9ff", "brightness": 1 },
+    "listening": { "color": "#b5d8ff", "brightness": 1.15 },
+    "panel": { "color": "#9cc9ff", "brightness": 0.6 },
+    "thinking": { "color": "#b9a6ff", "brightness": 1 },
+    "speaking": { "color": "#ffc58a", "brightness": 1.1 },
+    "strike": { "color": "#ff5a5a", "brightness": 1.1 },
+    "locked": { "color": "#a9a9bd", "brightness": 1.2 }
+  },
+  "effects": {
+    "wind": { "mode": "auto", "strength": 1, "speed": 1 },
+    "ripple": { "mode": "auto", "strength": 1, "speed": 1 },
+    "sweep": { "mode": "auto", "strength": 1, "speed": 1 },
+    "pulse": { "mode": "auto", "strength": 1, "speed": 1 },
+    "glitch": { "mode": "auto", "strength": 1, "speed": 1 },
+    "dust": { "mode": "auto", "strength": 1, "speed": 1 },
+    "breathing": { "mode": "auto", "strength": 1, "speed": 1 },
+    "scanline": { "mode": "off", "strength": 1, "speed": 1 },
+    "magnet": { "mode": "off", "strength": 1, "speed": 1 },
+    "depthFade": { "mode": "auto", "strength": 1, "speed": 1 },
+    "shimmer": { "mode": "off", "strength": 1, "speed": 1 },
+    "twinkle": { "mode": "off", "strength": 1, "speed": 1 },
+    "assemble": { "mode": "auto", "strength": 1, "speed": 1 },
+    "stateColor": { "mode": "auto", "strength": 1, "speed": 1 }
+  }
+}

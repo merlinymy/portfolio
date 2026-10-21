@@ -60,8 +60,28 @@ make dropouts constant. Open it from the home screen for real captures.
 
 Tap **Share**, AirDrop the files to this Mac, and move them into `knowledge/faceScan/`. Once everything
 is captured there are 12: `face.json`, `visemes.json`, `gaze.json`, `texture.json`, five clips and
-three `texture-*.jpg` photos. Git ignores that folder; the website's build turns it into
-`apps/site/public/face/`.
+three `texture-*.jpg` photos. Git ignores that folder.
+
+## Turn them into the website's files
+
+From the repo root, run:
+
+```
+npm run face
+```
+
+This runs `tools/face/build.ts`, which checks the files and writes four files to
+`apps/site/public/face/`:
+- `face.glb`
+- `clips.bin`
+- `visemes.json`
+- `gaze.json`
+
+Commit those four, because Cloudflare builds the site from GitHub and can't see `knowledge/`. They
+hold only what the site shows anyway: the mesh, the movement and the mouth shapes. The texture
+photos stay private.
+
+Run it again after any recapture. Nothing changes on the site until you do.
 
 ## Head and hair
 
@@ -95,6 +115,8 @@ pace. It takes about 35 seconds.
 > biochemistry researcher. It helped him write a grant proposal that won half a million dollars.
 
 ## File formats
+
+The first five sections describe the app's files; the last two describe what `npm run face` writes.
 
 **Coordinates.** All positions are in meters, in ARKit's face space:
 - **Origin:** inside the head, behind the nose.
@@ -146,7 +168,9 @@ the next tracked pose, so playback runs at the speed you actually moved.
 | `names` | The 52 slider names, in the order each pose lists its weights |
 | `poses` | Direction → `{ weights, eyes, lookAt }`, averaged over the 1.5 s the look was held. `weights` holds the 52 slider values; `eyes` and `lookAt` mean the same as in a clip. |
 
-`left` and `right` are your own left and right.
+`left` and `right` are the prompts the app showed ("look as far to your left"). People often
+mirror that prompt while watching themselves on screen, so the site doesn't trust the labels: it
+tells the sides apart by `lookAt`, where x is positive toward your own left.
 
 ### `texture.json` and `texture-*.jpg`: photos for texturing
 
@@ -185,3 +209,33 @@ viseme names that lip-sync tools use.
 | `kk` | k, g | cat | `oh` | o | go |
 | `CH` | ch, j, sh | chair | `ou` | u | blue |
 | `SS` | s, z | sun | | | |
+
+### `face.glb`: the mesh for the site and for Blender
+
+A glTF binary file, a standard 3D format that three.js and Blender both open. It contains one mesh,
+`Face`, in the same coordinates and meters as `face.json`:
+
+| Part | What it holds |
+|---|---|
+| Triangle primitive | The vertices, the triangles and the UVs (`TEXCOORD_0`). Blender imports this as the face surface. |
+| Line primitive | The same vertices, with an index list of every distinct triangle side (3,526 edges). The site draws these as the wireframe lines. |
+| Morph targets | One per slider, named in the mesh's `extras.targetNames`, in the same order as the clips' `names`. Stored sparse: only vertices that move take up space. |
+| Node `extras.eyes` | The eye centers and radius from `face.json`. |
+
+### `clips.bin`: all five clips, packed
+
+One little-endian binary file, about a third the size of the JSON clips:
+
+1. The 4 bytes `FCLP`.
+2. A version number (uint32, `1`).
+3. The header's length in bytes (uint32).
+4. The header, as JSON padded with spaces to a multiple of 4 bytes. It gives `fps`, the slider
+   `names`, `weightScale`, `angleScale`, and per clip its `name`, `frames` and the byte offsets of
+   its three blocks.
+5. Per clip, three blocks:
+   - **Slider values:** uint8, frames × sliders. Multiply by `weightScale` (1/255).
+   - **Head angles:** int16, frames × 3. Multiply by `angleScale` (1/10,000) for radians.
+   - **Eye angles:** int16, frames × 6, scaled the same way.
+
+`lookAt` isn't packed, because the site turns the eyes with the eye angles instead.
+

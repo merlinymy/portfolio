@@ -1,4 +1,4 @@
-/* Phase 0 styles: a readable dark page. The face, floating buttons and pop-up panels come in phase 2. */
+/* A readable dark page, with the face stage under the name. The floating buttons and pop-up panels come next in phase 2. */
 :root {
   color-scheme: dark;
   --bg: #141414;
@@ -53,6 +53,31 @@ footer {
 .tagline {
   color: var(--muted);
   margin: 0;
+}
+
+.face-stage {
+  position: relative;
+  height: min(78svh, 760px);
+  /* A vertical drag still scrolls the page; other drags on the face steer it. */
+  touch-action: pan-y;
+}
+
+.face-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.tilt-button {
+  position: absolute;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
 }
 
 .profile-nav ul {
