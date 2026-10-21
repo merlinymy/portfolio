@@ -156,5 +156,5 @@ xcuserdata/
 # Playwright test output
 test-results/
 playwright-report/
-# Downloaded MakeHuman base mesh (re-downloaded and checked by npm run head)
-tools/head/.cache/
+# The realistic mode's skin image: your face unwrapped flat. Local only until you choose to publish it.
+apps/site/public/face/face-texture.jpg

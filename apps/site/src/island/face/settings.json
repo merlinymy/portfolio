@@ -10,7 +10,11 @@
     "frameWidth": 0.3,
     "frameHeight": 0.4,
     "frameCenterY": -0.03,
-    "occlude": true
+    "occlude": true,
+    "realism": 0,
+    "skinBrightness": 1,
+    "lightAround": 25,
+    "lightUp": 30
   },
   "motion": {
     "reach": 40,
@@ -33,8 +37,8 @@
     "width": 1,
     "height": 1,
     "depth": 1,
-    "pointOpacity": 0.45,
-    "lineOpacity": 0.1
+    "pointOpacity": 0.9,
+    "lineOpacity": 0.18
   },
   "hair": {
     "show": true,

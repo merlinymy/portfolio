@@ -10,7 +10,7 @@ Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answe
 | 0b. Domain | Done: merlinyang.com's DNS is on Cloudflare (registration stays at Namecheap), and the current Vercel site still loads. There was no email forwarding to recreate. The tunnel hostname comes in phase 5. |
 | 1. Capture | Done. Hair photos dropped: the hair comes from a free model, and the head is rebuilt from your scan and the three face photos (§5.1). See below. |
 | 2a. Moving face | Done. Built: the converter (`npm run face`); the 3D face with clips, eyes following the pointer or a finger (tilt dropped, §5.5); all 14 effects; the face states; the `?lab` panel with a lip-sync strength control; the six floating buttons (three movement styles in the lab) and the pop-up panels (§4.2); the still image for browsers without WebGL and the link-preview image (`npm run face:still`); browser tests (`npm run test:e2e`, 9 passing). |
-| 2b. Head and hair | Built (§5.8), waiting for your look in the lab: `npm run head`; loose and bun hair; the seam follows the face; photo color; hiding what's behind the head. Then phase 3. |
+| 2b. Head and hair | Built again (§5.8): the head, neck, shoulders and ears are generated around your scan and checked against your three photos; realistic mode to compare in the lab on this Mac. Waiting for your look. Then phase 3. |
 
 **Phase 1 details:**
 - **Captured in the app,** each file checked:
@@ -419,35 +419,11 @@ Check these after moving the DNS, and again after launch:
    next. Brief tracking dropouts are normal and handled: the status dot ignores dropouts under half
    a second, and clips hold the last pose through them.
 
-**Head and hair (phase 2b).** The iPhone only scans the face, so the rest of the head is rebuilt in
-Blender from your scan and photos, and your long hair comes from a free model:
+**Head and hair (phase 2b).** The iPhone only scans the face. A script generates the rest of the
+head, the neck, the shoulders and the ears around your scan, checked against your three texture
+photos, and the browser grows the hair (§5.8 has the details and why). The three photos also give
+the face's point colors and realistic mode's skin image.
 
-- **Face texture.** The app also takes three photos and records where every vertex landed in each,
-  plus the mesh's UV layout (the flat map a texture image is wrapped by). A script paints the photos
-  onto the mesh, for Blender and as point colors on the site.
-- **Head, from your own data.** A free base head (CC0, free for any use) is reshaped in Blender
-  to match you:
-  - The face is the scan itself, so it's exact.
-  - Head width, the top outline and the hairline come from the front texture photo. Your hair is
-    tied back in it, so the outline follows your head.
-  - The ears come from the two turned texture photos, which each show one ear.
-  - Head depth and the back of the head appear in no photo, so they keep the base head's average
-    shape. Long hair covers them on the site. If the side view looks wrong, two side-profile photos
-    fix it.
-- **Hair, from a free model.**
-  - Licensed CC0, or CC-BY (free with a credit line on the site).
-  - Candidates: the hair packs for MPFB, the free MakeHuman add-on for Blender (CC0 or CC-BY), and
-    downloadable hair on Sketchfab filtered by license.
-  - Strand hair is preferred over hair cards (flat strips with a hair picture on them): strands
-    become lines, which fit the wireframe look.
-  - The style and length are matched to ordinary photos of you.
-- **Same coordinates.** The base head is moved and scaled in Blender to fit around the
-  exported face mesh, which keeps the site's coordinates, so the site needs no alignment step.
-- **No seam.** Head points near the edge of the face follow the face's movement with a falloff, so
-  smiling or opening the jaw doesn't tear the forehead or chin away from the head.
-- **Hair.** Strands export from Blender as curves and render as lines, with extra wind (§5.6).
-- **Wider turns.** With a full head, the ±25° turn limit (§5.5) can loosen, because there's no
-  hollow mask to hide.
 
 ### 5.2 Data pipeline
 
@@ -567,34 +543,44 @@ Your choices (2026-10-21):
 - **Styles:** loose and bun, both switchable in the lab so you can compare them, with the length
   adjustable.
 
-**The base body.**
-- **Source:** MakeHuman's base human. It's CC0 (free for any use, no credit needed), as are all
-  MakeHuman's bundled assets.
-- **Cropped** to the head, neck and shoulders: about 4,800 points.
-- **Its faces have four sides,** so its lines draw as a tidy grid, which tells it apart from the
-  scanned face's triangles.
+**Why the head is generated, not fitted (changed 2026-10-21).** The first version fitted MakeHuman's
+base human. On screen its jaw stuck out below your chin, and a seam showed where its points met
+your scan's. Two meshes with different spacing never quite meet, so the head is now built from your
+scan alone.
 
-**Your face stays your scan.** Only the sides, top and back of the head, the ears, the neck and the
-shoulders come from the base. The base's own face is reshaped for a moment so the rest of its head
-lines up with your face's outline (step 2), then deleted (step 3). Your expressions, eye movement
-and lip-sync keep driving your scanned face, as before.
+**Your face stays your scan.** The script only builds what surrounds it. Your expressions, eye
+movement and lip-sync keep driving your scanned face, as before.
 
-**Fitting it to you** (`tools/head/build.ts`, run with `npm run head`). The script is re-runnable,
-instead of modeling by hand in Blender, so a recapture only needs a re-run. The result,
-`public/face/head.glb`, still opens in Blender.
-1. **Line up.** Scale and move the base to match your eye centers, nose tip and chin.
-2. **Reshape.** Pull the base's face onto your scan, with the change fading out across the rest of
-   the head, so the two meet without a step.
-3. **Cut.** Remove the base's own face where your scan covers it, and snap the hole's edge onto
-   the scan's outline.
-4. **Head size.**
-   - Width and top come from the front texture photo, where your hair is tied back. The script
-     measures where dark hair meets the lighter wall.
-   - Lab sliders correct the width, height and depth by eye, since the photo shows no depth.
-5. **Seam.** Head points within 3 cm of the scan's edge follow its expressions, fading with
-   distance, so smiling or opening the jaw doesn't tear the forehead or chin away from the head.
-6. **Neck.** The head turns about the neck. The shoulders stay put, and the neck blends between
-   the two.
+**Building it** (`tools/head/build.ts`, run with `npm run head`; the result, `public/face/head.glb`,
+opens in Blender):
+1. **Describe the shape as distance.** For any point in space, the script can tell how far it is
+   from the surface (a signed distance field).
+   - The surface is a smooth blend of simple shapes: a skull, a jaw block, a neck, the shoulders and
+     two ears.
+   - Near your face, the blend gives way to your scan itself. The surface flows out of your scan's
+     edge instead of meeting it at a step.
+2. **Turn it into a mesh.** The script samples that distance on a 6–7 mm grid and builds triangles
+   where the surface crosses, using a method called surface nets. It then evens the mesh out, so
+   its spacing matches your face's.
+3. **Cut out the face.** Wherever your scan covers the surface, it's removed, and the hole's edge
+   is snapped onto your scan's outline points. Your own chin and jaw start the neck, so there's
+   no second jaw.
+4. **Size.**
+   - Head width and top come from the front photo, where your hair is tied back, measured as
+     before.
+   - The turned photos give the back of the head (where its outline meets the wall) and the ears
+     (where skin gives way to the hair behind them).
+   - The front photo also gives the neck's width.
+   - Each photo is read through a camera model fitted from your scan's points, and the result can
+     be drawn over the photos to compare (`HEAD_OVERLAY`). The shoulders were set this way, against
+     your shirt in the photos.
+   - Typical proportions fill in anything a photo doesn't show clearly.
+   - Lab sliders correct the head and ears by eye.
+5. **Colors.** Every head point takes its color from the photo that sees it best: skin, hair,
+   your shirt. Points no photo sees use hair or shirt colors. About 12,000 point colors are
+   published in `head.glb`, but not the photos.
+6. **Seam and neck.** Head points within 3 cm of your face's edge follow its expressions. The head
+   turns about the top of the neck, the shoulders stay still, and the neck blends between the two.
 
 **Hair** (`apps/site/src/island/face/hair.ts`, generated in the browser when the page loads):
 - **The same hair on every visit,** because the random choices come from a fixed seed.
@@ -617,10 +603,24 @@ instead of modeling by hand in Blender, so a recapture only needs a re-run. The 
   - A lab "photo color" effect blends them in. It's off by default, to keep the wireframe palette.
   - Only the 1,220 point colors are published, not the photos.
 
+**Realistic mode, to compare in the lab (added 2026-10-21):**
+- **The face as a solid surface.** It's textured with your photos and softly lit, with a slider
+  that blends between it and the points and edges.
+- **The skin image.** The converter makes it by wrapping the three photos onto the scan.
+  - It's your face, unwrapped flat, so it stays out of git and only exists on this Mac until you
+    decide to publish it.
+  - Until then the deployed site doesn't offer the option.
+- **Limits:**
+  - The scan's 1,220 points make the nose and lips slightly faceted; smoothing helps.
+  - The skin is only as sharp as the phone photos.
+  - The eyes and the inside of the mouth are simple stand-ins.
+  - The hair stays stylized strands.
+
 **Done when:**
 - The full head and shoulders turn with the pointer.
-- No seam shows when the face moves.
+- No seam or second jaw shows when the face moves.
 - Both hairstyles switch in the lab.
+- Realistic mode can be compared in the lab on this Mac.
 - The browser tests pass.
 
 ## 6. Voice and lip-sync
@@ -1057,7 +1057,7 @@ Each phase ends with something you can see working.
 | 0b    | Move merlinyang.com's DNS to Cloudflare. Records keep pointing at Vercel, so the current site stays up. Recreate Namecheap's email forwarding in Cloudflare Email Routing, which stops working otherwise. Set up the tunnel hostname for the API.                                | DNS answers from Cloudflare; the current site and email forwarding are unchanged                                                    |
 | 1     | Build the iPhone app on your phone; add the new clips, viseme capture and the format README; capture your data                                                                 | `face.json`, 5 clips, `visemes.json`, `gaze.json` and the texture photos are on the Mac                                                                               |
 | 2     | Face rendering, motion layers, pointer and finger following, floating buttons, all effects, the `?lab` page                                                                                | The face follows the pointer and a finger, the buttons float and open panels, and every effect toggles in the lab |
-| 2b | Head, neck, shoulders and hair (§5.8): a script fits MakeHuman's CC0 base body to your scan and photos; hair is generated in the browser in two styles; the seam follows the face; face colors sampled from the photos | The full head turns with the pointer, and no seam shows when the face moves |
+| 2b | Head, neck, shoulders and hair (§5.8): a script generates them around your scan from simple shapes and your photos; hair is generated in the browser in two styles; the seam follows the face; face colors and a realistic mode from the photos | The full head turns with the pointer, and no seam shows when the face moves |
 | 3     | Native model server on the Mac and the voice bake-off                                                                                                                          | A script turns a sentence into your voice plus lip timing; RTF measured                                       |
 | 4     | Private knowledge folder, ingest into Postgres (pgvector + keyword search), search test                                                                                                                      | Your test questions pull the right passages                                                                   |
 | 5     | Chat backend: §7.1 pipeline, strikes, limits, handoff email, transcripts, health check, Worker `/api` proxy, stage timing logs                                                                   | Red-team set meets its targets; SSE confirmed through the proxy                                               |
@@ -1088,5 +1088,5 @@ Phases 1 and 3 can run alongside each other, since one is iPhone work and the ot
 | A viral spike                                        | Rate limits, voicing queue, monthly spend cap, Cloudflare rate-limit rule                                                 |
 | Home internet or power outage                        | Designed in: sleeping face, offline message; panels and contact links stay up                                             |
 | Generated answers feel slow | Instant answers for the six common questions; the Thinking animation covers the wait; speed rounds v2 and v3 (§7.10) |
-| Fitting the head and long hair takes longer than expected | It starts from a free base head and a free hair model, not from scratch. It's phase 2b, after the moving face works, so the face-only version can ship first |
+| Building the head and long hair takes longer than expected | Both are generated by scripts and checked against the photos, not modeled by hand. It's phase 2b, after the moving face works, so the face-only version can ship first |
 | Voice clone misuse                                   | Only your own voice; the page says it's AI-generated; Chatterbox adds a watermark if chosen                               |

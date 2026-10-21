@@ -6,6 +6,9 @@
  *   face.json     → face.glb      the mesh, its 52 expression offsets, the line edges and each
  *                                 point's color from the texture photos (the photos stay private)
  *   <clip>.json   → clips.bin     all five clips, quantized and packed
+ *   texture photos → face-texture.jpg  the skin image for the lab's realistic mode. It's your face
+ *                                 unwrapped flat, so git ignores it: it stays on this Mac until
+ *                                 you decide to publish it (plan §5.8)
  *   visemes.json  → visemes.json  copied as is
  *   gaze.json     → gaze.json     copied as is
  */
@@ -134,6 +137,110 @@ async function sampleColors(face: FaceMesh): Promise<Float32Array | undefined> {
     for (let c = 0; c < 3; c++) colors[i * 3 + c] = total > 0 ? sum[c] / total : 0.2;
   }
   return colors;
+}
+
+/**
+ * The skin image for realistic mode: the three photos wrapped onto the scan's texture layout
+ * (its UVs). Each texel finds its triangle in UV space, then the same spot in each photo, and
+ * blends them by how squarely each photo saw it. Texels between triangles are filled from their
+ * neighbors, so the edges don't show dark lines.
+ */
+async function bakeTexture(face: FaceMesh, size = 1024): Promise<Uint8Array | undefined> {
+  let shots: TextureShot[];
+  try {
+    shots = (await readJson<{ shots: TextureShot[] }>("texture.json")).shots;
+  } catch {
+    return undefined;
+  }
+  const photos = await Promise.all(shots.map(async (s) => jpeg.decode(await readFile(join(SOURCE, s.image)), { useTArray: true })));
+  const v = face.vertices;
+  const count = v.length / 3;
+  const normals = new Float32Array(count * 3);
+  for (let t = 0; t < face.triangles.length; t += 3) {
+    const [a, b, c] = [face.triangles[t], face.triangles[t + 1], face.triangles[t + 2]];
+    const e1 = [v[b * 3] - v[a * 3], v[b * 3 + 1] - v[a * 3 + 1], v[b * 3 + 2] - v[a * 3 + 2]];
+    const e2 = [v[c * 3] - v[a * 3], v[c * 3 + 1] - v[a * 3 + 1], v[c * 3 + 2] - v[a * 3 + 2]];
+    const n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+    for (const i of [a, b, c]) for (let k = 0; k < 3; k++) normals[i * 3 + k] += n[k];
+  }
+  const sample = (photo: (typeof photos)[number], x: number, y: number, out: number[]) => {
+    const x0 = Math.max(0, Math.min(photo.width - 2, Math.floor(x)));
+    const y0 = Math.max(0, Math.min(photo.height - 2, Math.floor(y)));
+    const fx = Math.min(1, Math.max(0, x - x0));
+    const fy = Math.min(1, Math.max(0, y - y0));
+    for (let c = 0; c < 3; c++) {
+      const at = (xx: number, yy: number) => photo.data[(yy * photo.width + xx) * 4 + c];
+      out[c] =
+        (at(x0, y0) * (1 - fx) + at(x0 + 1, y0) * fx) * (1 - fy) + (at(x0, y0 + 1) * (1 - fx) + at(x0 + 1, y0 + 1) * fx) * fy;
+    }
+  };
+  const image = new Uint8Array(size * size * 4);
+  const filled = new Uint8Array(size * size);
+  const color = [0, 0, 0];
+  for (let t = 0; t < face.triangles.length; t += 3) {
+    const ids = [face.triangles[t], face.triangles[t + 1], face.triangles[t + 2]];
+    const uv = ids.map((i) => [face.uvs[i * 2] * size, face.uvs[i * 2 + 1] * size]);
+    const [x0, x1] = [Math.floor(Math.min(...uv.map((p) => p[0]))), Math.ceil(Math.max(...uv.map((p) => p[0])))];
+    const [y0, y1] = [Math.floor(Math.min(...uv.map((p) => p[1]))), Math.ceil(Math.max(...uv.map((p) => p[1])))];
+    const det = (uv[1][1] - uv[2][1]) * (uv[0][0] - uv[2][0]) + (uv[2][0] - uv[1][0]) * (uv[0][1] - uv[2][1]);
+    if (Math.abs(det) < 1e-9) continue;
+    for (let y = Math.max(0, y0); y <= Math.min(size - 1, y1); y++) {
+      for (let x = Math.max(0, x0); x <= Math.min(size - 1, x1); x++) {
+        const px = x + 0.5;
+        const py = y + 0.5;
+        const b0 = ((uv[1][1] - uv[2][1]) * (px - uv[2][0]) + (uv[2][0] - uv[1][0]) * (py - uv[2][1])) / det;
+        const b1 = ((uv[2][1] - uv[0][1]) * (px - uv[2][0]) + (uv[0][0] - uv[2][0]) * (py - uv[2][1])) / det;
+        const b2 = 1 - b0 - b1;
+        if (b0 < -0.001 || b1 < -0.001 || b2 < -0.001) continue;
+        const w = [b0, b1, b2];
+        const p = [0, 1, 2].map((k) => w.reduce((s, wi, j) => s + wi * v[ids[j] * 3 + k], 0));
+        const n = [0, 1, 2].map((k) => w.reduce((s, wi, j) => s + wi * normals[ids[j] * 3 + k], 0));
+        const nl = Math.hypot(n[0], n[1], n[2]) || 1;
+        let total = 0;
+        const sum = [0, 0, 0];
+        shots.forEach((shot, s) => {
+          const toCamera = [0, 1, 2].map((k) => shot.cameraInFace[k] - p[k]);
+          const dl = Math.hypot(toCamera[0], toCamera[1], toCamera[2]) || 1;
+          const facing = (n[0] * toCamera[0] + n[1] * toCamera[1] + n[2] * toCamera[2]) / (nl * dl);
+          if (facing <= 0.15) return;
+          const sx = w.reduce((acc, wi, j) => acc + wi * shot.pixels[ids[j] * 2], 0);
+          const sy = w.reduce((acc, wi, j) => acc + wi * shot.pixels[ids[j] * 2 + 1], 0);
+          sample(photos[s], sx, sy, color);
+          const weight = facing ** 4;
+          total += weight;
+          for (let c = 0; c < 3; c++) sum[c] += weight * color[c];
+        });
+        if (total === 0) continue;
+        const k = (y * size + x) * 4;
+        for (let c = 0; c < 3; c++) image[k + c] = Math.round(sum[c] / total);
+        image[k + 3] = 255;
+        filled[y * size + x] = 1;
+      }
+    }
+  }
+  // Grow the colors a few texels past each triangle's edge.
+  for (let round = 0; round < 6; round++) {
+    const next = filled.slice();
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      if (filled[y * size + x]) continue;
+      const sum = [0, 0, 0];
+      let n = 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const xx = x + dx;
+        const yy = y + dy;
+        if (xx < 0 || yy < 0 || xx >= size || yy >= size || !filled[yy * size + xx]) continue;
+        for (let c = 0; c < 3; c++) sum[c] += image[(yy * size + xx) * 4 + c];
+        n++;
+      }
+      if (!n) continue;
+      const k = (y * size + x) * 4;
+      for (let c = 0; c < 3; c++) image[k + c] = Math.round(sum[c] / n);
+      image[k + 3] = 255;
+      next[y * size + x] = 1;
+    }
+    filled.set(next);
+  }
+  return jpeg.encode({ data: image, width: size, height: size }, 88).data;
 }
 
 async function buildGlb(face: FaceMesh, names: string[]): Promise<{ bytes: Uint8Array; edges: number }> {
@@ -283,6 +390,8 @@ async function main() {
   const glb = await buildGlb(face, names);
   await writeFile(join(OUT, "face.glb"), glb.bytes);
   await writeFile(join(OUT, "clips.bin"), packClips(clips, names));
+  const skin = await bakeTexture(face);
+  if (skin) await writeFile(join(OUT, "face-texture.jpg"), skin);
   await copyFile(join(SOURCE, "visemes.json"), join(OUT, "visemes.json"));
   await copyFile(join(SOURCE, "gaze.json"), join(OUT, "gaze.json"));
 
@@ -290,7 +399,7 @@ async function main() {
     `${face.vertices.length / 3} vertices, ${face.triangles.length / 3} triangles, ${glb.edges} edges, ` +
       `${names.length} sliders; clips: ${clips.map((c) => `${c.name} ${c.frames.length}`).join(", ")} frames`,
   );
-  for (const file of ["face.glb", "clips.bin", "visemes.json", "gaze.json"]) {
+  for (const file of ["face.glb", "clips.bin", "visemes.json", "gaze.json", ...(skin ? ["face-texture.jpg"] : [])]) {
     console.log(`  ${join("apps/site/public/face", file)}  ${((await stat(join(OUT, file))).size / 1024).toFixed(1)} KB`);
   }
 }

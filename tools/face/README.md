@@ -95,28 +95,43 @@ The second step opens the built site in Chrome, holds your neutral face, and sav
 
 ## Head, neck, shoulders and hair
 
-The iPhone only scans your face. A script builds the rest around it (plan §5.8), so no extra
-photos are needed:
+The iPhone only scans your face. A script generates the rest around it from your scan and the three
+texture photos (plan §5.8):
 
 ```
 npm run head
 ```
 
 What it does:
-- **Downloads and checks the base.** The first run downloads MakeHuman's base human. It's CC0
-  (free for any use, no credit needed). The script pins the exact file and checks it, so every
-  rebuild starts from the same base.
-- **Fits it to your scan.** It lines the base up with your eyes and nose, and reshapes its face onto
-  your scan so the edges meet. Then it cuts the base's face away: your scanned face is never
-  changed.
-- **Sizes it from your front photo.** It measures the head's width and top where your dark hair
-  meets the lighter wall, and prints what it measured.
-- **Writes `apps/site/public/face/head.glb`.** Commit it with the face files. Blender opens it too.
+- **Builds the shape.** It combines simple shapes (a skull, a jaw, a neck, the shoulders) into one
+  smooth surface. Near your face, that surface gives way to your scan, so it flows out of your
+  scan's edge without a step.
+- **Leaves your face alone.** The part your scan covers is cut away, so your scanned face itself is
+  never changed. Two simple ears are added on the sides.
+- **Measures it from your photos,** through a camera model fitted to each photo from your scan's
+  points. The script prints what it measured, and falls back to typical proportions for anything a
+  photo doesn't show clearly.
+  - The front photo gives the head's width and top, and the neck's width.
+  - The turned photos give the back of the head and the ears.
+- **Colors every point from your photos,** for photo color and realistic mode. The colors come from
+  whichever photo sees each point best. Points no photo sees, like the back of the head, use hair
+  or shirt colors.
+- **Writes `apps/site/public/face/head.glb`.** Commit it with the face files. It holds about 12,000
+  point colors sampled from the photos, but not the photos themselves. Blender opens it too.
 
 Run it again after `npm run face` whenever the face scan changes.
 
+**Checking it against your photos.** `HEAD_OVERLAY=<folder> npm run head` draws the head (green) and
+your scan (red) over each photo, through that photo's camera. Write the images outside the repo,
+since they show your photos. Add `HEAD_DEBUG=1` to print what each photo measured.
+
 **The hair is generated in the browser,** from the settings in the lab's Hair section: loose or bun,
 strand count, length, part, bun height and size. So changing the style needs no rebuild.
+
+**Realistic mode's skin image.** `npm run face` also writes `face-texture.jpg`: your three photos
+wrapped onto the scan. It's your face unwrapped flat, so git ignores it. A deploy skips it too, even
+one run from this Mac (`apps/site/public/.assetsignore`). The lab's "realistic" slider uses it on this
+Mac; elsewhere it falls back to the face's point colors.
 
 ## Voice sample (for the voice clone, phase 3)
 
@@ -276,8 +291,9 @@ Written by `npm run head`, in the same face space and meters as `face.json`. One
 | Part | What it holds |
 |---|---|
 | Triangle primitive | The surface, for Blender, and for hiding what's behind the head on the site |
-| Line primitive | The edges of the base's four-sided faces, drawn as the head's grid |
+| Line primitive | The triangles' edges, drawn as the head's wireframe |
 | `_HEAD_WEIGHT` | How much each point turns with the head: 1 for the head, 0 for the shoulders, blending across the neck |
 | `_SEAM_INDEX`, `_SEAM_WEIGHT` | The scan outline vertex each point near the face's edge follows, and how much. Points farther than 3 cm from the edge have weight 0. |
-| Node `extras` | `pivot` (where the head turns, at the top of the neck), `eyeY`, `scalp` (the triangles the hair grows from), and the simple shapes the hair drapes over: `torso` (a dome over the shoulders) and `neck` (a cylinder) |
+| `COLOR_0` | Each point's color from the texture photos (linear RGB); hair or shirt colors where no photo sees it |
+| Node `extras` | `pivot` (where the head turns, at the top of the neck), `eyeY`, `scalp` (the triangles the hair grows from), the simple shapes the hair drapes over (`torso`, a dome over the shoulders, and `neck`, a cylinder), `ears`, and `measured` (what came from the photos) |
 

@@ -50,6 +50,8 @@ export interface HeadData {
   edges: Uint16Array;
   /** Triples of point indices: the surface, which hides whatever is behind it. */
   triangles: Uint16Array;
+  /** Each point's color from the texture photos (linear RGB), for photo color and realistic mode. */
+  colors?: Float32Array;
   /** How much each point turns with the head: 1 for the head, 0 for the shoulders. */
   headWeight: Float32Array;
   /** The scan outline vertex each point follows, and how much (0 away from the face's edge). */
@@ -77,6 +79,8 @@ export interface FaceData {
   edges: Uint16Array;
   /** Triples of vertex indices: the surface, which hides whatever is behind it. */
   triangles: Uint16Array;
+  /** Where each point sits in the skin image (realistic mode), u and v per vertex. */
+  uvs: Float32Array;
   eyes: Eyes;
   clips: Record<ClipName, Clip>;
   gaze: Record<"center" | "left" | "right" | "up" | "down", GazePose>;
@@ -140,6 +144,9 @@ async function loadMesh() {
     names,
     base: positionsOf(geometry.attributes.position),
     triangles: new Uint16Array(geometry.index!.array),
+    uvs: Float32Array.from({ length: geometry.attributes.uv.count * 2 }, (_, i) =>
+      i % 2 === 0 ? geometry.attributes.uv.getX(i >> 1) : geometry.attributes.uv.getY(i >> 1),
+    ),
     colors: color ? positionsOf(color) : undefined,
     targets: morphs.map((attribute) => sparseTarget(positionsOf(attribute))),
     edges: new Uint16Array(edges.index.array),
@@ -181,6 +188,7 @@ async function loadHead(): Promise<HeadData | undefined> {
     base: positionsOf(g.attributes.position),
     edges: new Uint16Array(lines.index.array),
     triangles: new Uint16Array(g.index!.array),
+    colors: g.getAttribute("color") ? positionsOf(g.getAttribute("color")) : undefined,
     headWeight: scalar("_head_weight"),
     seamIndex: Uint16Array.from(scalar("_seam_index")),
     seamWeight: scalar("_seam_weight"),

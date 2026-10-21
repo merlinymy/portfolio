@@ -126,6 +126,10 @@ export default function Lab({ data }: { data: FaceData }) {
     frameWidth: slider(look, "frameWidth", 0.15, 0.6, 0.01, "view width (m)"),
     frameHeight: slider(look, "frameHeight", 0.2, 0.7, 0.01, "view height (m)"),
     frameCenterY: slider(look, "frameCenterY", -0.15, 0.1, 0.005, "view center (m)"),
+    realism: slider(look, "realism", 0, 1, 0.01, "realistic (this Mac only)"),
+    skinBrightness: slider(look, "skinBrightness", 0.5, 1.6, 0.01, "skin brightness"),
+    lightAround: slider(look, "lightAround", -90, 90, 1, "light from side (°)"),
+    lightUp: slider(look, "lightUp", -60, 80, 1, "light from above (°)"),
     occlude: {
       value: look.occlude,
       label: "hide what's behind",

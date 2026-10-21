@@ -15,6 +15,8 @@ import {
   Plane,
   Quaternion,
   Raycaster,
+  type Texture,
+  TextureLoader,
   Vector2,
   Vector3,
 } from "three";
@@ -118,8 +120,11 @@ const scratch = {
 
 export function Face({ data, input, buttons }: { data: FaceData; input: LookInput; buttons?: FaceButtons }) {
   const hairRef = useRef<LineSegments>(null);
+  const realHairRef = useRef<LineSegments>(null);
   const headRefs = useRef<Object3D[]>([]);
   const occluderRefs = useRef<Object3D[]>([]);
+  const realRefs = useRef<Object3D[]>([]);
+  const skin = useRef<{ requested: boolean; texture?: Texture }>({ requested: false });
   const scene = useMemo(() => buildScene(data), [data]);
   const rig = useMemo(() => buildRig(data), [data]);
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
@@ -253,8 +258,61 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
       if (rig.hairPending && now - rig.hairChangedAt >= REGROW_DELAY && hairRef.current) {
         rig.hairPending = false;
         hairRef.current.geometry = scene.setHair(growHair(hairShape(h, scene.head.shaped, rig.chinY), hairSettings));
+        if (realHairRef.current) realHairRef.current.geometry = scene.hair;
       }
       if (hairRef.current) hairRef.current.visible = hairSettings.show;
+      if (realHairRef.current) realHairRef.current.visible = hairSettings.show && look.realism > 0.001;
+    }
+
+    // Realistic mode (plan §5.8): the solid face, eyeballs and mouth, blended over the wireframe.
+    const realism = clamp(look.realism, 0, 1);
+    if (realism > 0 && !skin.current.requested) {
+      skin.current.requested = true;
+      new TextureLoader().load(
+        "/face/face-texture.jpg",
+        (texture) => {
+          // The skin image is laid out top-down, like the glTF's UVs.
+          texture.flipY = false;
+          texture.needsUpdate = true;
+          skin.current.texture = texture;
+          scene.materials.solidFace.uniforms.uMap.value = texture;
+          scene.materials.solidFace.uniforms.uUseMap.value = 1;
+        },
+        undefined,
+        () => console.warn("No face-texture.jpg: run npm run face to make the skin image (it stays on this Mac)."),
+      );
+    }
+    for (const object of realRefs.current) object.visible = realism > 0.001;
+    if (realism > 0.001) {
+      scene.geometries.solidFace.computeVertexNormals();
+      if (scene.head) scene.head.solid.computeVertexNormals();
+      const around = look.lightAround * DEG;
+      const up = look.lightUp * DEG;
+      for (const material of [scene.materials.solidFace, scene.materials.solidHead]) {
+        material.uniforms.uOpacity.value = realism;
+        material.uniforms.uLight.value.set(Math.sin(around) * Math.cos(up), Math.sin(up), Math.cos(around) * Math.cos(up));
+        material.uniforms.uBrightness2.value = look.skinBrightness;
+      }
+      scene.materials.eyeballs.opacity = realism;
+      scene.materials.mouth.opacity = realism;
+      // Eyeballs turn with the eyes, then with the head; the mouth's inside turns with the head.
+      const eyeCount = scene.eyeLocal.length / 3;
+      [data.eyes.left, data.eyes.right].forEach((center, side) => {
+        scratch.e.set(pose.eyes[side * 3], pose.eyes[side * 3 + 1], pose.eyes[side * 3 + 2], "XYZ");
+        scratch.q.setFromEuler(scratch.e);
+        for (let i = 0; i < eyeCount; i++) {
+          scratch.v.fromArray(scene.eyeLocal, i * 3).applyQuaternion(scratch.q);
+          scratch.v.x += center[0];
+          scratch.v.y += center[1];
+          scratch.v.z += center[2];
+          scratch.v.applyMatrix4(rig.headMatrix).toArray(scene.eyeballPositions, (side * eyeCount + i) * 3);
+        }
+      });
+      scene.geometries.eyeballs.attributes.position.needsUpdate = true;
+      for (let i = 0; i < scene.mouthLocal.length; i += 3) {
+        scratch.v.fromArray(scene.mouthLocal, i).applyMatrix4(rig.headMatrix).toArray(scene.mouthPositions, i);
+      }
+      scene.geometries.mouth.attributes.position.needsUpdate = true;
     }
 
     // Eye rings turn with the recorded or looked-at eye angles and fade as the eyelids close.
@@ -308,6 +366,7 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
     u.uScan.value = amount("scanline");
     u.uScanSpeed.value = fx.scanline.speed;
     u.uDepth.value = amount("depthFade");
+    u.uDepthCenter.value = distance - 0.04;
     u.uShimmer.value = amount("shimmer") * calm;
     u.uShimmerSpeed.value = fx.shimmer.speed;
     u.uTwinkle.value = amount("twinkle") * calm;
@@ -336,14 +395,17 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
     rig.brightness = approach(rig.brightness, settings.states[rig.state].brightness, dt, 0.4);
     u.uBrightness.value = rig.brightness;
     const mat = scene.materials;
-    mat.points.uniforms.uOpacity.value = look.pointOpacity;
-    mat.lines.uniforms.uOpacity.value = look.lineOpacity;
-    mat.eyes.uniforms.uOpacity.value = look.eyeOpacity;
+    // In realistic mode the points and edges fade back as the solid face comes in.
+    const wire = 1 - 0.85 * clamp(look.realism, 0, 1);
+    mat.points.uniforms.uOpacity.value = look.pointOpacity * wire;
+    mat.lines.uniforms.uOpacity.value = look.lineOpacity * wire;
+    mat.eyes.uniforms.uOpacity.value = look.eyeOpacity * wire;
     mat.eyes.uniforms.uSizeScale.value = look.eyeSize;
     mat.eyes.uniforms.uGain.value = look.eyeGlow;
-    mat.headPoints.uniforms.uOpacity.value = settings.head.pointOpacity;
-    mat.headLines.uniforms.uOpacity.value = settings.head.lineOpacity;
-    mat.hair.uniforms.uOpacity.value = hairSettings.opacity;
+    mat.headPoints.uniforms.uOpacity.value = settings.head.pointOpacity * wire;
+    mat.headLines.uniforms.uOpacity.value = settings.head.lineOpacity * wire;
+    mat.hair.uniforms.uOpacity.value = hairSettings.opacity * (1 - clamp(look.realism, 0, 1));
+    mat.realHair.uniforms.uOpacity.value = 0.55 * clamp(look.realism, 0, 1);
     // Photo color: the face's points take their real colors, and the head the average skin tone.
     const photo = clamp(amount("photoColor"), 0, 1);
     for (const material of [mat.points, mat.lines, mat.headPoints, mat.headLines]) material.uniforms.uPhoto.value = photo;
@@ -429,9 +491,19 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
   const keepOccluder = (object: Object3D | null) => {
     if (object && !occluderRefs.current.includes(object)) occluderRefs.current.push(object);
   };
+  const keepReal = (object: Object3D | null) => {
+    if (object && !realRefs.current.includes(object)) realRefs.current.push(object);
+  };
   return (
     <group>
       <mesh ref={keepOccluder} geometry={scene.geometries.surface} material={scene.materials.occluder} frustumCulled={false} />
+      {/* Realistic mode: drawn before the points, so its surface hides what's behind it. */}
+      <mesh ref={keepReal} geometry={scene.geometries.mouth} material={scene.materials.mouth} renderOrder={-3} visible={false} frustumCulled={false} />
+      <mesh ref={keepReal} geometry={scene.geometries.eyeballs} material={scene.materials.eyeballs} renderOrder={-3} visible={false} frustumCulled={false} />
+      <mesh ref={keepReal} geometry={scene.geometries.solidFace} material={scene.materials.solidFace} renderOrder={-2} visible={false} frustumCulled={false} />
+      {scene.head && (
+        <mesh ref={keepReal} geometry={scene.head.solid} material={scene.materials.solidHead} renderOrder={-2} visible={false} frustumCulled={false} />
+      )}
       {scene.head && (
         <mesh ref={keepOccluder} geometry={scene.head.surface} material={scene.materials.occluder} frustumCulled={false} />
       )}
@@ -442,6 +514,7 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
         </>
       )}
       <lineSegments ref={hairRef} geometry={scene.hair} material={scene.materials.hair} frustumCulled={false} />
+      <lineSegments ref={realHairRef} geometry={scene.hair} material={scene.materials.realHair} visible={false} frustumCulled={false} />
       <lineSegments geometry={scene.geometries.lines} material={scene.materials.lines} frustumCulled={false} />
       <points geometry={scene.geometries.points} material={scene.materials.points} frustumCulled={false} />
       <points geometry={scene.geometries.eyes} material={scene.materials.eyes} frustumCulled={false} />

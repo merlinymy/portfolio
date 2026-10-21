@@ -3,7 +3,7 @@
  * expression-mixed positions the CPU uploads each frame. Points, lines and eye rings share one
  * vertex shader and one set of uniforms, so they always move together.
  */
-import { AdditiveBlending, Color, Matrix4, ShaderMaterial, Vector2, Vector3, Vector4 } from "three";
+import { AdditiveBlending, Color, DoubleSide, Matrix4, NormalBlending, ShaderMaterial, Vector2, Vector3, Vector4 } from "three";
 
 export function createUniforms() {
   return {
@@ -34,6 +34,8 @@ export function createUniforms() {
     uMagnetPos: { value: new Vector3() },
     uMagnet: { value: 0 },
     uDepth: { value: 0 },
+    /** The camera's distance to the face, so depth fade measures from the face's front. */
+    uDepthCenter: { value: 0.5 },
     uShimmer: { value: 0 },
     uShimmerSpeed: { value: 1 },
     uTwinkle: { value: 0 },
@@ -64,7 +66,7 @@ uniform float uBreath, uBreathSpeed;
 uniform float uScan, uScanSpeed;
 uniform vec3 uMagnetPos;
 uniform float uMagnet;
-uniform float uDepth;
+uniform float uDepth, uDepthCenter;
 uniform float uShimmer, uShimmerSpeed;
 uniform float uTwinkle, uTwinkleSpeed;
 uniform float uAssemble;
@@ -84,6 +86,12 @@ attribute float aAlong;    // 0 at a strand's root, 1 at its end
 
 varying vec3 vColor;
 varying float vAlpha;
+#ifdef SOLID
+attribute vec3 aSolid;     // the head's own color in realistic mode: skin, hair or shirt
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vSolid;
+#endif
 
 float hash(float n) { return fract(sin(n) * 43758.5453); }
 
@@ -150,7 +158,6 @@ void main() {
     glow += exp(-pow((position.y - y) / 0.004, 2.0)) * uScan * 2.0;
   }
 
-  alpha *= mix(1.0, 0.25 + 0.75 * smoothstep(-0.02, 0.06, position.z), uDepth);
 
 #ifdef POINTS
   float twinkle = step(0.97, hash(aSeed * 91.7 + floor(t * 2.5 * uTwinkleSpeed + aSeed * 13.0)));
@@ -196,10 +203,21 @@ void main() {
   );
 #endif
   p = mix(p, (uHead * vec4(p, 1.0)).xyz, aHeadWeight);
+#ifdef SOLID
+  vUv = uv;
+  vSolid = aSolid;
+  // The surface's direction, turned with the head and seen from the camera, for lighting.
+  vNormal = normalize(mat3(viewMatrix) * mix(normal, mat3(uHead) * normal, aHeadWeight));
+#endif
+
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  // Depth fade, measured from the camera: points farther back than the face's front dim, so a
+  // turned head's near ear stays bright and the far side recedes.
+  float behind = -mv.z - uDepthCenter;
+  alpha *= mix(1.0, 1.0 - 0.75 * smoothstep(-0.02, 0.1, behind), uDepth);
 
   vColor = mix(mix(uColor, aColor, uPhoto), uGlitchColor, red) * uBrightness * uGain * breath * (1.0 + glow);
   vAlpha = alpha * uOpacity;
-  vec4 mv = modelViewMatrix * vec4(p, 1.0);
   gl_Position = projectionMatrix * mv;
 #ifdef POINTS
   gl_PointSize = max(1.5, uSize * uSizeScale * uScale / -mv.z);
@@ -225,6 +243,53 @@ void main() {
 }
 `;
 
+const solidFragment = /* glsl */ `
+uniform sampler2D uMap;
+uniform float uUseMap, uOpacity, uBrightness2;
+uniform vec3 uSkin, uLight;
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vSolid;
+void main() {
+  vec3 base = uUseMap > 0.5 ? texture2D(uMap, vUv).rgb : vSolid;
+  float light = max(dot(normalize(vNormal), uLight), 0.0);
+  // Soft: plenty of fill light, so the photo's own shading isn't doubled into harsh shadows.
+  gl_FragColor = vec4(base * (0.55 + 0.55 * light) * uBrightness2, uOpacity);
+}
+`;
+
+/**
+ * Realistic mode's solid surface (plan §5.8): the face wrapped in the photo skin image, or the
+ * head in a flat skin tone, softly lit. It runs the same vertex shader as the points, so it moves
+ * with every expression and turn. Its depth is pushed back slightly so the points and lines on
+ * the surface stay visible while the two are blended.
+ */
+export function createSolid(uniforms: FaceUniforms) {
+  return new ShaderMaterial({
+    uniforms: {
+      ...uniforms,
+      uOpacity: { value: 0 },
+      uSizeScale: { value: 1 },
+      uGain: { value: 1 },
+      uPhoto: { value: 0 },
+      uMap: { value: null },
+      uUseMap: { value: 0 },
+      uSkin: { value: new Color(0.8, 0.62, 0.52) },
+      uLight: { value: new Vector3(0.3, 0.4, 0.86).normalize() },
+      uBrightness2: { value: 1 },
+    },
+    vertexShader,
+    fragmentShader: solidFragment,
+    defines: { SOLID: "" },
+    transparent: true,
+    depthWrite: true,
+    side: DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 2,
+  });
+}
+
 /**
  * An invisible copy of the face and head surface, drawn first, that hides points, lines and hair
  * behind it (a bun at the back shouldn't show through the forehead). It runs the same vertex
@@ -238,10 +303,23 @@ export function createOccluder(uniforms: FaceUniforms) {
     fragmentShader: "void main() { gl_FragColor = vec4(0.0); }",
     colorWrite: false,
     depthWrite: true,
+    // The generated head's triangles don't all wind the same way, so hide from both sides.
+    side: DoubleSide,
     polygonOffset: true,
     polygonOffsetFactor: 2,
     polygonOffsetUnits: 4,
   });
+}
+
+/**
+ * Realistic mode's hair: the same strands drawn as dark lines with ordinary blending (glowing
+ * additive lines can't be dark).
+ */
+export function createRealHair(uniforms: FaceUniforms) {
+  const material = createMaterial(uniforms, "hair", 0);
+  material.blending = NormalBlending;
+  material.uniforms.uPhoto.value = 1;
+  return material;
 }
 
 /**

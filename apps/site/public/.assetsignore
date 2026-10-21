@@ -1,0 +1,3 @@
+# Never upload the realistic mode's skin image (your face unwrapped), even from a deploy on this Mac.
+face/face-texture.jpg
+.assetsignore

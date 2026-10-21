@@ -3,11 +3,20 @@
  * lines, the eye rings, the fitted head, neck and shoulders, and the hair. Every point carries the
  * attributes the shared shader expects; the render loop in Face.tsx updates them each frame.
  */
-import { BufferAttribute, BufferGeometry, Color, DynamicDrawUsage, Vector3 } from "three";
+import {
+  BufferAttribute,
+  BufferGeometry,
+  Color,
+  DoubleSide,
+  DynamicDrawUsage,
+  MeshBasicMaterial,
+  SphereGeometry,
+  Vector3,
+} from "three";
 import type { FaceData, HeadData } from "./data";
 import type { Hair, HeadShape } from "./hair";
 import { settings, type Settings } from "./settings";
-import { createMaterial, createOccluder, createUniforms } from "./shaders";
+import { createMaterial, createOccluder, createRealHair, createSolid, createUniforms } from "./shaders";
 
 /** A repeatable random sequence, so the scatter and twinkle look the same on every visit. */
 function random(seed: number) {
@@ -142,7 +151,13 @@ export function buildScene(data: FaceData) {
     headPoints: createMaterial(uniforms, "points", settings.head.pointOpacity),
     headLines: createMaterial(uniforms, "lines", settings.head.lineOpacity),
     hair: createMaterial(uniforms, "hair", settings.hair.opacity),
+    realHair: createRealHair(uniforms),
     occluder: createOccluder(uniforms),
+    solidFace: createSolid(uniforms),
+    solidHead: createSolid(uniforms),
+    // Eyeballs and the mouth's inside are already turned on the CPU, so they use plain materials.
+    eyeballs: new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0 }),
+    mouth: new MeshBasicMaterial({ color: new Color(0.06, 0.03, 0.03), transparent: true, opacity: 0, side: DoubleSide }),
   };
   // The eye rings always draw on top: hidden by the eyelids' edges they read poorly, and the
   // irises are what follows the visitor.
@@ -166,6 +181,19 @@ export function buildScene(data: FaceData) {
   for (const name of ATTRIBUTES) lines.setAttribute(name, points.getAttribute(name));
   lines.setIndex(new BufferAttribute(data.edges, 1));
   const surface = surfaceOf(points, data.triangles);
+  // Realistic mode's solid face: the same points, plus where each sits in the skin image, and
+  // normals recomputed each frame as the expression changes.
+  const solidFace = surfaceOf(points, data.triangles);
+  solidFace.setAttribute("uv", new BufferAttribute(data.uvs, 2));
+  // Without the skin image (it stays on the Mac that made it), the face's point colors stand in.
+  solidFace.setAttribute(
+    "aSolid",
+    new BufferAttribute(
+      data.colors ? data.colors.map((c) => c ** (1 / 2.2)) : new Float32Array(data.vertexCount * 3).fill(0.7),
+      3,
+    ),
+  );
+  solidFace.computeVertexNormals();
 
   // Eye rings: positions and fade are written every frame.
   const ring = eyeRing(data.eyes.radius);
@@ -182,11 +210,15 @@ export function buildScene(data: FaceData) {
 
   // The fitted head, neck and shoulders, if tools/head/build.ts has run.
   const skin = averageColor(data.colors);
+  // Realistic mode's head colors, in the skin image's own (sRGB) values: the face's average skin
+  // tone, dark hair on the scalp, and a shirt like the one in the photos (white, navy sleeves).
+  const skinSrgb = [skin.r, skin.g, skin.b].map((c) => Math.min(1, c ** (1 / 2.2) * 1.05));
   let head:
     | {
         geometry: BufferGeometry;
         lines: BufferGeometry;
         surface: BufferGeometry;
+        solid: BufferGeometry;
         positions: Float32Array;
         shaped: Float32Array;
         seam: Uint32Array;
@@ -197,23 +229,99 @@ export function buildScene(data: FaceData) {
     const headPositions = new Float32Array(h.base);
     const geometry = new BufferGeometry();
     geometry.setAttribute("position", new BufferAttribute(headPositions, 3).setUsage(DynamicDrawUsage));
-    standardAttributes(geometry, h.vertexCount, 13, { headWeight: h.headWeight, colors: colorsOf(h.vertexCount, skin) });
+    standardAttributes(geometry, h.vertexCount, 13, {
+      headWeight: h.headWeight,
+      colors: h.colors ?? colorsOf(h.vertexCount, skin),
+    });
     const headLines = new BufferGeometry();
     for (const name of ATTRIBUTES) headLines.setAttribute(name, geometry.getAttribute(name));
     headLines.setIndex(new BufferAttribute(h.edges, 1));
     const seam = Uint32Array.from({ length: h.vertexCount }, (_, i) => i).filter((i) => h.seamWeight[i] > 0);
+    const solidHead = surfaceOf(geometry, h.triangles);
+    solidHead.computeVertexNormals();
+    const scalp = new Set(h.scalp);
+    const solidColors = new Float32Array(h.vertexCount * 3);
+    for (let i = 0; i < h.vertexCount; i++) {
+      // The photos' colors where tools/head/build.ts sampled them; otherwise skin, hair or shirt.
+      let c: number[];
+      if (h.colors) c = [0, 1, 2].map((k) => h.colors![i * 3 + k] ** (1 / 2.2));
+      else {
+        const x = h.base[i * 3];
+        const y = h.base[i * 3 + 1];
+        c = skinSrgb;
+        if (y < h.neck.bottom - 0.01) c = Math.abs(x) > 0.12 ? [0.14, 0.17, 0.27] : [0.84, 0.84, 0.82];
+        else if (scalp.has(i)) c = [0.07, 0.055, 0.05];
+      }
+      solidColors.set(c, i * 3);
+    }
+    solidHead.setAttribute("aSolid", new BufferAttribute(solidColors, 3));
     head = {
       geometry,
       lines: headLines,
       surface: surfaceOf(geometry, h.triangles),
+      solid: solidHead,
       positions: headPositions,
       shaped: new Float32Array(h.base),
       seam,
     };
   }
 
+  // Realistic mode's eyeballs: white spheres with a brown iris and a dark pupil facing forward.
+  // Their points are turned with the eyes and the head on the CPU each frame.
+  const sphere = new SphereGeometry(data.eyes.radius * 0.97, 24, 16);
+  const eyeLocal = sphere.attributes.position.array as Float32Array;
+  const eyeCount = eyeLocal.length / 3;
+  const eyeballs = new BufferGeometry();
+  const eyeballPositions = new Float32Array(eyeCount * 2 * 3);
+  const eyeballColors = new Float32Array(eyeCount * 2 * 3);
+  for (let side = 0; side < 2; side++) {
+    for (let i = 0; i < eyeCount; i++) {
+      const z = eyeLocal[i * 3 + 2] / data.eyes.radius;
+      const c = z > 0.92 ? [0.03, 0.02, 0.02] : z > 0.75 ? [0.25, 0.15, 0.09] : [0.86, 0.83, 0.79];
+      eyeballColors.set(c, (side * eyeCount + i) * 3);
+    }
+  }
+  eyeballs.setAttribute("position", new BufferAttribute(eyeballPositions, 3).setUsage(DynamicDrawUsage));
+  eyeballs.setAttribute("color", new BufferAttribute(eyeballColors, 3));
+  const sphereIndex = sphere.index!.array;
+  eyeballs.setIndex(new BufferAttribute(Uint32Array.from([...sphereIndex, ...Array.from(sphereIndex, (v) => v + eyeCount)]), 1));
+  sphere.dispose();
+
+  // The inside of the mouth: a dark oval just behind the lips, so an open mouth isn't see-through.
+  let mouthCenter = [0, 0, 0];
+  {
+    // The lips' middle, from the scan's points around the mouth below the nose.
+    const lo = [Infinity, Infinity, Infinity];
+    const hi = [-Infinity, -Infinity, -Infinity];
+    for (let i = 0; i < data.vertexCount; i++) {
+      const x = data.base[i * 3];
+      const y = data.base[i * 3 + 1];
+      if (Math.abs(x) < 0.025 && y < data.eyes.left[1] - 0.05 && y > data.eyes.left[1] - 0.085) {
+        for (let k = 0; k < 3; k++) {
+          lo[k] = Math.min(lo[k], data.base[i * 3 + k]);
+          hi[k] = Math.max(hi[k], data.base[i * 3 + k]);
+        }
+      }
+    }
+    mouthCenter = [0, (lo[1] + hi[1]) / 2, hi[2] - 0.014];
+  }
+  const mouthLocal: number[] = [];
+  const mouthIndex: number[] = [];
+  const mouthSegments = 24;
+  mouthLocal.push(...mouthCenter);
+  for (let i = 0; i < mouthSegments; i++) {
+    const a = (i / mouthSegments) * Math.PI * 2;
+    mouthLocal.push(mouthCenter[0] + Math.cos(a) * 0.028, mouthCenter[1] + Math.sin(a) * 0.018, mouthCenter[2] - 0.004 * Math.abs(Math.cos(a)));
+    mouthIndex.push(0, 1 + i, 1 + ((i + 1) % mouthSegments));
+  }
+  const mouth = new BufferGeometry();
+  const mouthPositions = new Float32Array(mouthLocal.length);
+  mouth.setAttribute("position", new BufferAttribute(mouthPositions, 3).setUsage(DynamicDrawUsage));
+  mouth.setIndex(mouthIndex);
+
   let hair = new BufferGeometry();
-  const hairColor = new Color(0.12, 0.1, 0.09);
+  // Dark brown-black, for photo color and realistic mode.
+  const hairColor = new Color(0.035, 0.028, 0.024);
   /** Replaces the hair with newly grown strands. */
   const setHair = (grown: Hair) => {
     hair.dispose();
@@ -231,7 +339,11 @@ export function buildScene(data: FaceData) {
   return {
     uniforms,
     materials,
-    geometries: { points, lines, eyes, surface },
+    geometries: { points, lines, eyes, surface, solidFace, eyeballs, mouth },
+    eyeLocal,
+    eyeballPositions,
+    mouthLocal: new Float32Array(mouthLocal),
+    mouthPositions,
     positions,
     eyeRing: ring,
     eyePositions,
@@ -242,7 +354,9 @@ export function buildScene(data: FaceData) {
       return hair;
     },
     dispose() {
-      for (const g of [points, lines, eyes, surface, hair, head?.geometry, head?.lines, head?.surface]) g?.dispose();
+      for (const g of [points, lines, eyes, surface, solidFace, eyeballs, mouth, hair, head?.geometry, head?.lines, head?.surface, head?.solid]) {
+        g?.dispose();
+      }
       for (const m of Object.values(materials)) m.dispose();
     },
   };

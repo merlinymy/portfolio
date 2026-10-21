@@ -91,6 +91,15 @@ export interface Settings {
     frameCenterY: number;
     /** Hide what's behind the face and head, instead of seeing through them. */
     occlude: boolean;
+    /**
+     * Realistic mode, 0–1: the face as a solid surface wrapped in the photo skin image, blended
+     * over the points and edges. Only works where face-texture.jpg exists (on this Mac, plan §5.8).
+     */
+    realism: number;
+    skinBrightness: number;
+    /** Where the light comes from, in degrees: around (0 = straight ahead) and up. */
+    lightAround: number;
+    lightUp: number;
   };
   /** The fitted head, neck and shoulders (plan §5.8). */
   head: {
