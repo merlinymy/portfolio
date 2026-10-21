@@ -1,4 +1,6 @@
 import ARKit
+import CoreImage
+import ImageIO
 import SceneKit
 import SwiftUI
 
@@ -10,8 +12,10 @@ final class FaceTracker: NSObject, ObservableObject, ARSCNViewDelegate, ARSessio
         case countdown(Int)
         case scanning
         case recording(ClipKind)
-        /// Mouth shape `index` of Captures.visemes; `holding` once its frames are being averaged.
-        case viseme(index: Int, holding: Bool)
+        /// Pose `index` of a held-pose sequence; `holding` once its frames are being averaged.
+        case pose(PoseSet, index: Int, holding: Bool)
+        /// Photo `index` of Captures.textureShots.
+        case texture(index: Int)
     }
 
     @Published private(set) var isSupported = ARFaceTrackingConfiguration.isSupported
@@ -24,13 +28,14 @@ final class FaceTracker: NSObject, ObservableObject, ARSCNViewDelegate, ARSessio
     let sceneView = ARSCNView()
     private var scan: ScanAccumulator?
     private var recorder: ClipRecorder?
-    private var mouthPose: VisemeAccumulator?
+    private var heldPose: PoseAccumulator?
     /// The running countdown or mouth-shape walkthrough, so Cancel can stop it.
     private var sequence: Task<Void, Never>?
     private var rejectedFrames = 0
     private var isRunning = false
     /// When ARKit last reported the face tracked (see updateTracking).
     private var lastTrackedTime: TimeInterval = 0
+    private let imageContext = CIContext()
 
     override init() {
         super.init()
@@ -93,35 +98,106 @@ final class FaceTracker: NSObject, ObservableObject, ARSCNViewDelegate, ARSessio
         }
     }
 
-    /// Walks through the mouth shapes: 2 s to form each one, then 1.5 s holding it while its
-    /// blendshape weights are averaged. Saves visemes.json once every shape is done.
+    /// The 15 mouth shapes: 2 s to form each one, then 1.5 s holding it. Saves visemes.json.
     func startVisemes() {
+        let shapes = Captures.visemes
+        startPoses(.mouth, intro: "\(shapes.count) mouth shapes next. Make just the big sound and hold it while the bar fills. Don't say the whole word.",
+                   settle: 2) { [self] poses in
+            save(VisemeFile(order: shapes.map(\.id), names: BlendShapes.names, poses: poses.mapValues(\.weights)),
+                 as: Captures.visemeFile)
+        }
+    }
+
+    /// Five gaze directions with the head still: 1.5 s to look, then 1.5 s holding. Saves gaze.json.
+    func startGaze() {
+        let looks = Captures.gazes
+        startPoses(.gaze, intro: "Keep your head still and move only your eyes.", settle: 1.5) { [self] poses in
+            save(GazeFile(order: looks.map(\.id), names: BlendShapes.names, poses: poses),
+                 as: Captures.gazeFile)
+        }
+    }
+
+    /// Walks through a held-pose sequence: `settle` seconds to get into each pose, then 1.5 s holding
+    /// it while its values are averaged. Calls `finish` once every pose is done.
+    private func startPoses(_ set: PoseSet, intro: String, settle: Double,
+                            finish: @escaping @MainActor ([String: Pose]) -> Void) {
         guard activity == .idle else { return }
         activity = .countdown(3)
         sequence = Task { @MainActor in
-            let shapes = Captures.visemes
-            guard await countdown("\(shapes.count) mouth shapes next. Hold each one still while the bar fills.") else { return }
-            var poses: [String: [Double]] = [:]
-            for (index, viseme) in shapes.enumerated() {
-                activity = .viseme(index: index, holding: false)
-                message = viseme.direction
-                progress = Double(index) / Double(shapes.count)
-                guard await pause(seconds: 2) else { return }
-                mouthPose = VisemeAccumulator()
-                activity = .viseme(index: index, holding: true)
+            guard await countdown(intro) else { return }
+            var averaged: [String: Pose] = [:]
+            for (index, pose) in set.poses.enumerated() {
+                activity = .pose(set, index: index, holding: false)
+                message = pose.direction
+                progress = Double(index) / Double(set.poses.count)
+                guard await pause(seconds: settle) else { return }
+                heldPose = PoseAccumulator()
+                activity = .pose(set, index: index, holding: true)
                 guard await pause(seconds: 1.5) else { return }
-                let pose = mouthPose?.average()
-                mouthPose = nil
-                guard let pose else {
-                    activity = .idle
-                    progress = 0
-                    message = "Lost your face during the “\(viseme.example)” shape. Try again in better light."
+                let result = heldPose?.average()
+                heldPose = nil
+                guard let result else {
+                    abandon("Lost your face during “\(pose.label)”. Try again in better light.")
                     return
                 }
-                poses[viseme.id] = pose
+                averaged[pose.id] = result
             }
-            save(VisemeFile(order: shapes.map(\.id), names: BlendShapes.names, poses: poses),
-                 as: Captures.visemeFile)
+            finish(averaged)
+        }
+    }
+
+    /// Takes one front-camera photo per head angle in Captures.textureShots, recording where every
+    /// mesh vertex landed in it. Saves the photos as JPEGs plus texture.json.
+    func startTexture() {
+        guard activity == .idle else { return }
+        activity = .countdown(3)
+        sequence = Task { @MainActor in
+            let shots = Captures.textureShots
+            guard await countdown(shots[0].direction) else { return }
+            var taken: [TextureFile.Shot] = []
+            var photos: [(file: String, data: Data)] = []
+            for (index, shot) in shots.enumerated() {
+                activity = .texture(index: index)
+                message = shot.direction
+                progress = Double(index) / Double(shots.count)
+                guard await pause(seconds: 2) else { return }
+
+                // Wait up to a second for a frame where the face is tracked.
+                var capture: (frame: ARFrame, face: ARFaceAnchor)?
+                for _ in 0..<10 {
+                    if let frame = sceneView.session.currentFrame,
+                       let face = frame.anchors.compactMap({ $0 as? ARFaceAnchor }).first,
+                       face.isTracked {
+                        capture = (frame, face)
+                        break
+                    }
+                    guard await pause(seconds: 0.1) else { return }
+                }
+                guard let capture else {
+                    abandon("Couldn't see your face for the \(shot.name) photo. Try again.")
+                    return
+                }
+                do {
+                    photos.append((shot.imageFile, try jpegData(capture.frame.capturedImage)))
+                } catch {
+                    abandon("Couldn't encode the \(shot.name) photo: \(error.localizedDescription)")
+                    return
+                }
+                taken.append(makeTextureShot(name: shot.name, image: shot.imageFile,
+                                             face: capture.face, camera: capture.frame.camera))
+            }
+            // Write the photos only once all of them exist, so a cancelled run never leaves new
+            // photos next to an old texture.json that describes different ones.
+            do {
+                for photo in photos {
+                    try photo.data.write(to: Self.exportDirectory.appendingPathComponent(photo.file),
+                                         options: .atomic)
+                }
+            } catch {
+                abandon("Couldn't save the texture photos: \(error.localizedDescription)")
+                return
+            }
+            save(TextureFile(shots: taken), as: Captures.textureFile)
         }
     }
 
@@ -138,10 +214,18 @@ final class FaceTracker: NSObject, ObservableObject, ARSCNViewDelegate, ARSessio
         sequence = nil
         scan = nil
         recorder = nil
-        mouthPose = nil
+        heldPose = nil
         activity = .idle
         progress = 0
         message = "Cancelled."
+    }
+
+    /// Ends a capture sequence early, showing `text` as the status message.
+    private func abandon(_ text: String) {
+        sequence = nil
+        activity = .idle
+        progress = 0
+        message = text
     }
 
     /// Shows 3, 2, 1 under `prompt`. Returns false if cancelled meanwhile.
@@ -209,8 +293,8 @@ final class FaceTracker: NSObject, ObservableObject, ARSCNViewDelegate, ARSessio
             if done { finish(current) }
         }
 
-        if case .viseme(_, holding: true) = activity {
-            mouthPose?.add(face)
+        if case .pose(_, _, holding: true) = activity {
+            heldPose?.add(face)
         }
     }
 
@@ -253,6 +337,16 @@ final class FaceTracker: NSObject, ObservableObject, ARSCNViewDelegate, ARSessio
         } catch {
             message = "Couldn't save \(filename): \(error.localizedDescription)"
         }
+    }
+
+    /// Encodes a camera frame as JPEG data.
+    private func jpegData(_ pixelBuffer: CVPixelBuffer) throws -> Data {
+        let image = CIImage(cvPixelBuffer: pixelBuffer)
+        let quality = [kCGImageDestinationLossyCompressionQuality as CIImageRepresentationOption: 0.92]
+        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
+              let data = imageContext.jpegRepresentation(of: image, colorSpace: colorSpace, options: quality)
+        else { throw CocoaError(.fileWriteUnknown) }
+        return data
     }
 
     private static var exportDirectory: URL {

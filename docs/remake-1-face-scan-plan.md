@@ -50,7 +50,7 @@ Two rules sit around the chat:
 | Voice                           | Your cloned voice, muted by default; lips always sync                                                                                                          | Hearing your actual voice is the memorable part. Muting by default respects people browsing at work and fits browsers' autoplay rules. Lip-sync keeps the face alive either way.                                                                                                                                         |
 | Lip timing when muted           | Audio is always generated and played at zero volume                                                                                                            | Muted and unmuted share one path, so they look identical and unmuting mid-reply just works. It costs nothing extra, because the voice runs on your Mac.                                                                                                                                                                  |
 | Face motion                     | Mouth driven by the reply's speech; head, blinks and brows from clips of you recorded on the iPhone                                                            | Lips that don't match the words look dubbed. Your own recorded head and brow movement makes it feel like you, not a generic avatar.                                                                                                                                                                                      |
-| Face source                     | iPhone face mesh (1,220 points) with custom shader effects                                                                                                     | It comes with ARKit's 52 expression sliders, so it can talk with no hand rigging in Blender. A sparse 1,220-point mesh suits the wireframe look.                                                                                                                                                                         |
+| Face source                     | iPhone face mesh (1,220 points) with custom shader effects. The rest of the head and the hair are modeled in Blender around it (phase 2b).                                                                                                     | It comes with ARKit's 52 expression sliders, so it can talk with no hand rigging in Blender. A sparse 1,220-point mesh suits the wireframe look. Long hair scans badly, so the head and hair are modeled from reference photos and a face texture instead.                                                                                                                                                                         |
 | Effects                         | Build all of them, switch between them on a test page, then pick favorites                                                                                     | Shader effects are hard to judge on paper. Trying them live settles it faster than debating.                                                                                                                                                                                                                             |
 | Profile                         | Six floating buttons (About, Experience, Projects, Skills, Résumé, Contact), each opening a panel                                                              | The first screen stays just your face, while the full portfolio is one click away for every visitor and crawler.                                                                                                                                                                                                         |
 | Crawlers                        | Welcome, AI crawlers included; all profile text is plain HTML                                                                                                  | Recruiters and AI tools find people through search and scraping. A site they can't read is invisible to them.                                                                                                                                                                                                            |
@@ -376,8 +376,25 @@ Check these after moving the DNS, and again after launch:
    still carry your own timing and mannerisms. Accept this for version 1.
 5. **Optional: "read this script" mode.** It records audio while you read a fixed text, which gives
    the voice clone a clean 20–30 s sample with an exact transcript.
-6. **Not yet tested.** The app hasn't been built or run on a device in this session. Step one is to
-   build it and check the exports.
+6. **Tested on your iPhone 16 Pro Max** (2026-10-20). It builds and runs; the capture session is
+   next. Brief tracking dropouts are normal and handled: the status dot ignores dropouts under half
+   a second, and clips hold the last pose through them.
+
+**Head and hair (phase 2b).** The iPhone only scans the face, so the rest of the head and your long
+hair are modeled in Blender:
+
+- **Face texture.** The app also takes three photos and records where every vertex landed in each,
+  plus the mesh's UV layout (the flat map a texture image is wrapped by). A script paints the photos
+  onto the mesh, for Blender and as point colors on the site.
+- **Reference photos.** Front, sides, back, top and hair close-ups guide the modeling. The
+  checklist is in `tools/face/README.md`.
+- **Lined up for free.** The head is modeled around the exported face mesh, in the same
+  coordinates, so no alignment step is needed.
+- **No seam.** Head points near the edge of the face follow the face's movement with a falloff, so
+  smiling or opening the jaw doesn't tear the forehead or chin away from the head.
+- **Hair.** Strands export from Blender as curves and render as lines, with extra wind (§5.6).
+- **Wider turns.** With a full head, the ±25° turn limit (§5.5) can loosen, because there's no
+  hollow mask to hide.
 
 ### 5.2 Data pipeline
 
@@ -413,6 +430,9 @@ Check these after moving the DNS, and again after launch:
     on the GPU, so switching is a contained change.
 - **Eyes.** The scan has holes where the eyes are, so the eyes are drawn as small rings of points at
   the captured eye positions. They turn to look at the pointer.
+  - Clips replay your recorded eyeball rotations.
+  - Pointer-following stays within your own range, captured by the app's eye-range step
+    (`gaze.json`). Your eyelids move the way they did when you looked each way.
 - **Saving power.** Rendering stops when the tab is hidden, and the pixel ratio is capped at 2.
 - **Loading.** The three.js code loads after the HTML is on screen, so the text and buttons appear first.
 - **Without WebGL.** If the device can't draw 3D, a still image of the face stands in, and the
@@ -903,8 +923,9 @@ Each phase ends with something you can see working.
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | 0     | Set up the Astro + React + TypeScript workspace; move the old site's content into `content/`; remove the old pages; deploy a placeholder to a Cloudflare Pages preview address | The preview address shows six readable panels, and `curl` returns their text                                  |
 | 0b    | Move merlinyang.com's DNS to Cloudflare. Records keep pointing at Vercel, so the current site stays up. Set up the tunnel hostname for the API.                                | DNS answers from Cloudflare; the current site is unchanged                                                    |
-| 1     | Build the iPhone app on your phone; add the new clips, viseme capture and the format README; capture your data                                                                 | `face.json`, 5 clips and `visemes.json` are on the Mac                                                        |
+| 1     | Build the iPhone app on your phone; add the new clips, viseme capture and the format README; capture your data                                                                 | `face.json`, 5 clips, `visemes.json`, `gaze.json`, the texture photos and the reference photos are on the Mac                                                        |
 | 2     | Face rendering, motion layers, pointer and tilt, floating buttons, all effects, the `?lab` page                                                                                | The face follows the pointer and tilt, the buttons float and open panels, and every effect toggles in the lab |
+| 2b | Head and hair: model them in Blender around the exported face mesh, bake the face texture, import into the site, make the seam follow the face, render hair strands as lines (§5.1) | The full head turns with the pointer, and no seam shows when the face moves |
 | 3     | Native model server on the Mac and the voice bake-off                                                                                                                          | A script turns a sentence into your voice plus lip timing; RTF measured                                       |
 | 4     | Private knowledge folder, ingest into Postgres (pgvector + keyword search), search test                                                                                                                      | Your test questions pull the right passages                                                                   |
 | 5     | Chat backend: §7.1 pipeline, strikes, limits, handoff email, transcripts, health check, Pages Function proxy, stage timing logs                                                                   | Red-team set meets its targets; SSE confirmed through the proxy                                               |
@@ -935,4 +956,5 @@ Phases 1 and 3 can run alongside each other, since one is iPhone work and the ot
 | A viral spike                                        | Rate limits, voicing queue, monthly spend cap, Cloudflare rate-limit rule                                                 |
 | Home internet or power outage                        | Designed in: sleeping face, offline message; panels and contact links stay up                                             |
 | Generated answers feel slow | Instant answers for the six common questions; the Thinking animation covers the wait; speed rounds v2 and v3 (§7.10) |
+| Modeling the head and long hair takes longer than expected | It's phase 2b, after the moving face works, so the face-only version can ship first |
 | Voice clone misuse                                   | Only your own voice; the page says it's AI-generated; Chatterbox adds a watermark if chosen                               |

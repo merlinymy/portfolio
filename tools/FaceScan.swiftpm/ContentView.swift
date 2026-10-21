@@ -31,15 +31,31 @@ struct ContentView: View {
                 .font(.system(size: 96, weight: .bold, design: .rounded))
                 .foregroundStyle(.orange)
                 .frame(maxHeight: .infinity)
-        case .viseme(let index, let holding):
-            let viseme = Captures.visemes[index]
+        case .pose(let set, let index, let holding):
             VStack(spacing: 8) {
-                Text(viseme.example)
+                Text(set.poses[index].label)
                     .font(.system(size: 56, weight: .bold, design: .rounded))
-                Text(holding ? "Hold still" : "Make the shape")
+                if let hint = set.poses[index].hint {
+                    Text(hint)
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                }
+                Text(holding ? "Hold still" : (set == .gaze ? "Look there" : "Make the shape"))
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(holding ? .green : .orange)
-                Text("\(index + 1) of \(Captures.visemes.count)")
+                Text("\(index + 1) of \(set.poses.count)")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+            .frame(maxHeight: .infinity, alignment: .top)
+            .padding(.top, 60)
+        case .texture(let index):
+            VStack(spacing: 8) {
+                Text(Captures.textureShots[index].name.capitalized)
+                    .font(.system(size: 56, weight: .bold, design: .rounded))
+                Text("Photo \(index + 1) of \(Captures.textureShots.count)")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -73,7 +89,7 @@ struct ContentView: View {
             case .recording:
                 Button("Stop and save", role: .destructive) { tracker.stopRecording() }
                     .buttonStyle(.borderedProminent)
-            case .scanning, .countdown, .viseme:
+            case .scanning, .countdown, .pose, .texture:
                 Button("Cancel", role: .cancel) { tracker.cancel() }
                     .buttonStyle(.bordered)
             case .idle:
@@ -121,6 +137,21 @@ struct ContentView: View {
                 tracker.startVisemes()
             } label: {
                 captureLabel("3. Mouth shapes (\(Captures.visemes.count))", symbol: "mouth", file: Captures.visemeFile)
+            }
+            .buttonStyle(.bordered)
+
+            Button {
+                tracker.startTexture()
+            } label: {
+                captureLabel("4. Face texture (\(Captures.textureShots.count) photos)", symbol: "camera",
+                             file: Captures.textureFile)
+            }
+            .buttonStyle(.bordered)
+
+            Button {
+                tracker.startGaze()
+            } label: {
+                captureLabel("5. Eye range (\(Captures.gazes.count) looks)", symbol: "eyes", file: Captures.gazeFile)
             }
             .buttonStyle(.bordered)
         }

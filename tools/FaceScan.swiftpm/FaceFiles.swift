@@ -1,10 +1,13 @@
 import ARKit
 import simd
+import UIKit
 
 // The three JSON formats the website loads (documented in tools/face/README.md):
 //   face.json     – my neutral mesh + per-blendshape vertex deltas
 //   <clip>.json   – a recorded performance: 52 weights + head rotation per frame
 //   visemes.json  – the 52 weights for each of the 15 mouth shapes the lip-sync uses
+//   gaze.json     – weights and eye rotations while looking center, left, right, up and down
+//   texture.json  – where every vertex landed in each texture-*.jpg photo
 
 struct FaceMeshFile: Encodable {
     struct Eyes: Encodable {
@@ -24,6 +27,8 @@ struct FaceMeshFile: Encodable {
     var units = "m"
     let vertices: [Double]
     let triangles: [Int]
+    /// ARKit's texture coordinates, [u0, v0, u1, …], one pair per vertex.
+    let uvs: [Double]
     let eyes: Eyes
     let blendshapes: [String: Target]
 }
@@ -37,6 +42,31 @@ struct FaceClipFile: Encodable {
     let frames: [[Double]]
     /// Euler angles (x, y, z order, radians) relative to the clip's average pose.
     let head: [[Double]]
+    /// Per frame, each eye's rotation relative to the face: [lx, ly, lz, rx, ry, rz], radians,
+    /// three.js "XYZ" order.
+    let eyes: [[Double]]
+    /// Per frame, the point both eyes converge on, in face space (meters).
+    let lookAt: [[Double]]
+}
+
+/// One held pose, averaged: the 52 weights, both eyes' rotations, and where the eyes converge.
+struct Pose: Encodable {
+    let weights: [Double]
+    /// [lx, ly, lz, rx, ry, rz]: each eye's rotation relative to the face, radians, three.js "XYZ".
+    let eyes: [Double]
+    /// The point both eyes converge on, in face space (meters).
+    let lookAt: [Double]
+}
+
+struct GazeFile: Encodable {
+    var format = "face-gaze"
+    var version = 1
+    /// Gaze direction ids in capture order.
+    let order: [String]
+    /// The 52 blendshape names, in the order every pose lists its weights.
+    let names: [String]
+    /// Direction id → the averaged pose while looking that way.
+    let poses: [String: Pose]
 }
 
 struct VisemeFile: Encodable {
@@ -48,6 +78,40 @@ struct VisemeFile: Encodable {
     let names: [String]
     /// Viseme id → 52 weights, averaged while the mouth shape was held.
     let poses: [String: [Double]]
+}
+
+struct TextureFile: Encodable {
+    struct Shot: Encodable {
+        let name: String
+        let image: String
+        let width: Int
+        let height: Int
+        /// Camera position in face space, to tell which vertices faced the camera.
+        let cameraInFace: [Double]
+        /// Where each mesh vertex landed in the image, in pixels: [x0, y0, x1, y1, …].
+        let pixels: [Double]
+    }
+
+    var format = "face-texture"
+    var version = 1
+    let shots: [Shot]
+}
+
+/// Projects every vertex of the tracked face into the camera image, so a script can later paint
+/// the photo onto the mesh's UV layout.
+func makeTextureShot(name: String, image: String, face: ARFaceAnchor, camera: ARCamera) -> TextureFile.Shot {
+    let size = camera.imageResolution
+    let pixels = face.geometry.vertices.flatMap { vertex -> [Double] in
+        let world = face.transform * SIMD4(vertex, 1)
+        // The captured image is stored in the sensor's own orientation, landscape right.
+        let point = camera.projectPoint(SIMD3(world.x, world.y, world.z),
+                                        orientation: .landscapeRight, viewportSize: size)
+        return [(Double(point.x) * 10).rounded() / 10, (Double(point.y) * 10).rounded() / 10]
+    }
+    let cameraInFace = face.transform.inverse * camera.transform.columns.3
+    return .init(name: name, image: image, width: Int(size.width), height: Int(size.height),
+                 cameraInFace: [cameraInFace.x, cameraInFace.y, cameraInFace.z].map { short($0) },
+                 pixels: pixels)
 }
 
 /// Rounds in Double so JSONEncoder writes short numbers ("0.01234", not
@@ -65,6 +129,7 @@ struct ScanAccumulator {
     private var leftEyeSum = SIMD3<Float>(repeating: 0)
     private var rightEyeSum = SIMD3<Float>(repeating: 0)
     private var triangles: [Int16] = []
+    private var uvs: [SIMD2<Float>] = []
 
     init(targetFrames: Int) {
         self.targetFrames = targetFrames
@@ -84,6 +149,7 @@ struct ScanAccumulator {
         if vertexSum.isEmpty {
             vertexSum = vertices
             triangles = face.geometry.triangleIndices
+            uvs = face.geometry.textureCoordinates
         } else {
             guard vertices.count == vertexSum.count else { return false }
             for i in vertices.indices { vertexSum[i] += vertices[i] }
@@ -102,6 +168,7 @@ struct ScanAccumulator {
         return FaceMeshFile(
             vertices: vertices,
             triangles: triangles.map(Int.init),
+            uvs: uvs.flatMap { [short($0.x), short($0.y)] },
             eyes: .init(
                 left: [left.x, left.y, left.z].map { short($0) },
                 right: [right.x, right.y, right.z].map { short($0) },
@@ -147,6 +214,8 @@ struct ClipRecorder {
     private var initialRotation: simd_float3x3?
     private var frames: [[Double]] = []
     private var head: [SIMD3<Float>] = []
+    private var eyes: [[Double]] = []
+    private var lookAt: [[Double]] = []
 
     init(name: String, duration: TimeInterval) {
         self.name = name
@@ -170,9 +239,14 @@ struct ClipRecorder {
         let rotation = rotationPart(of: face.transform)
         if initialRotation == nil { initialRotation = rotation }
         let euler = eulerXYZ(initialRotation!.transpose * rotation)
+        let eyeRow = eyeAngles(of: face).map { short($0, places: 4) }
+        let gaze = face.lookAtPoint
+        let lookRow = [gaze.x, gaze.y, gaze.z].map { short($0, places: 4) }
         while frames.count <= slot {
             frames.append(weights)
             head.append(euler)
+            eyes.append(eyeRow)
+            lookAt.append(lookRow)
         }
 
         return progress(at: time) >= 1
@@ -190,28 +264,47 @@ struct ClipRecorder {
             head: head.map { h in
                 let centered = h - mean
                 return [centered.x, centered.y, centered.z].map { short($0, places: 4) }
-            }
+            },
+            eyes: eyes,
+            lookAt: lookAt
         )
     }
 }
 
-/// Averages the 52 blendshape weights while one mouth shape is held still.
-struct VisemeAccumulator {
-    private var sums = [Float](repeating: 0, count: BlendShapes.all.count)
+/// Averages a pose (weights, eye rotations, gaze point) while it's held still.
+struct PoseAccumulator {
+    private var weights = [Float](repeating: 0, count: BlendShapes.all.count)
+    private var eyes = [Float](repeating: 0, count: 6)
+    private var lookAt = SIMD3<Float>(repeating: 0)
     private var frames = 0
 
     mutating func add(_ face: ARFaceAnchor) {
         for (i, shape) in BlendShapes.all.enumerated() {
-            sums[i] += face.blendShapes[shape.location]?.floatValue ?? 0
+            weights[i] += face.blendShapes[shape.location]?.floatValue ?? 0
         }
+        for (i, angle) in eyeAngles(of: face).enumerated() { eyes[i] += angle }
+        lookAt += face.lookAtPoint
         frames += 1
     }
 
     /// Nil when too few tracked frames arrived to trust the average.
-    func average() -> [Double]? {
+    func average() -> Pose? {
         guard frames >= 15 else { return nil }
-        return sums.map { short($0 / Float(frames), places: 3) }
+        let n = Float(frames)
+        let gaze = lookAt / n
+        return Pose(
+            weights: weights.map { short($0 / n, places: 3) },
+            eyes: eyes.map { short($0 / n, places: 4) },
+            lookAt: [gaze.x, gaze.y, gaze.z].map { short($0, places: 4) }
+        )
     }
+}
+
+/// Each eye's rotation relative to the face, as three.js "XYZ" Euler angles: [lx, ly, lz, rx, ry, rz].
+func eyeAngles(of face: ARFaceAnchor) -> [Float] {
+    let left = eulerXYZ(rotationPart(of: face.leftEyeTransform))
+    let right = eulerXYZ(rotationPart(of: face.rightEyeTransform))
+    return [left.x, left.y, left.z, right.x, right.y, right.z]
 }
 
 private func translation(of m: simd_float4x4) -> SIMD3<Float> {
