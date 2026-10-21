@@ -40,9 +40,12 @@ uv run bakeoff/bakeoff.py --report
 open ../../knowledge/voice/bakeoff/index.html
 ```
 
-The voices are listed in `MODELS` in `bakeoff/run.py`. Two options make variants of a voice:
+The voices are listed in `MODELS` in `bakeoff/run.py`. Options make variants of a voice:
 - `whole` voices each line in one go, instead of sentence by sentence.
 - `reference` copies the voice from your own take of a line, instead of `sample.m4a`.
+- `respell` says names by their sound-it-out spellings from `pronunciations.json`.
+- `language` picks one of Kyutai's Pocket-TTS models, such as their larger
+  `english_2026-09_24l`.
 
 - **`prepare.py`** turns `sample.m4a` into the reference clip the models copy from. Parakeet
   transcribes it, because the models copy best when the transcript matches the recording word for
@@ -80,10 +83,32 @@ Each model runs in its faster mode:
 - **Chatterbox voices each sentence in one piece.** Streaming reruns its audio decoder for every
   piece, which makes it about 1.5 times slower.
 
+## Sound-it-out spellings for names (plan §6.1)
+
+Voice models guess unfamiliar words from their spelling, so tech names come out jumbled or get
+dropped. For example, Pocket-TTS read the full stop in "three.js" as the end of the sentence and
+skipped the rest of the line. `pronunciations.json` lists spellings the voice reads instead, such as
+"three J S". It's used by `speak.py` and by bake-off voices with the `respell` option. The words
+on screen keep the real spelling.
+
+```sh
+uv run bakeoff/words.py     # tries each spelling in pronunciation-candidates.json
+open ../../knowledge/voice/words/index.html
+```
+
+The page plays, for each name:
+- your own take of the line it's in;
+- the name as written;
+- each spelling to try, with two takes each, because a model can say a word cleanly once and
+  jumble it the next time.
+
+"Said cleanly" checks that the sentence came out whole. Whether a spelling sounds the way you say
+the name is your call. Put the spelling you choose in `pronunciations.json`.
+
 ## Speaking a sentence with lip timing (plan §6.1)
 
 ```sh
-uv run speak.py "I'm authorized to work in the U.S."
+uv run speak.py "I'm authorized to work in the U.S."   # Pocket-TTS; --model picks another voice
 ```
 
 This writes a `.wav` and a `.json` to `knowledge/voice/speak/`. The `.json` holds:
@@ -91,8 +116,8 @@ This writes a `.wav` and a `.json` to `knowledge/voice/speak/`. The `.json` hold
 - the mouth shapes, as `[seconds, shape]` pairs, using the face's 15 shapes from `visemes.json`.
 
 How it gets the shapes:
-1. Names in `pronunciations.json` are swapped for sound-it-out spellings ("pgvector" → "P G
-   vector"), for the voice only. The words on screen keep the real spelling.
+1. Names in `pronunciations.json` are swapped for their sound-it-out spellings ("pgvector" → "P G
+   vector"), for the voice only.
 2. The voice model speaks the sentence.
 3. The forced aligner times each word.
 4. The CMU Pronouncing Dictionary splits each word into its speech sounds. It's downloaded once to

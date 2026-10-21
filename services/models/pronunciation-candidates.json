@@ -1,0 +1,80 @@
+{
+  "ARC": [
+    "ay ar see",
+    "A R C",
+    "arc"
+  ],
+  "AWS": [
+    "A W S"
+  ],
+  "AlphaFold": [
+    "Alpha Fold",
+    "alfa fold"
+  ],
+  "Burroughs": [
+    "Burrows",
+    "Burr-ohs"
+  ],
+  "Cohere": [
+    "co-here",
+    "co here"
+  ],
+  "FantastBioTech": [
+    "Fantast Bio Tech",
+    "Fantast Biotech"
+  ],
+  "FastAPI": [
+    "fast A P I",
+    "Fast API"
+  ],
+  "FireProofSheep": [
+    "Fire Proof Sheep",
+    "Fireproof Sheep"
+  ],
+  "PaperPrism": [
+    "paper prism",
+    "Paper Prism"
+  ],
+  "Postgres": [
+    "post-gress"
+  ],
+  "ProteinMPNN": [
+    "protein em pee en en",
+    "protein M P N N",
+    "protein MPNN"
+  ],
+  "Qdrant": [
+    "quadrant",
+    "Q drant"
+  ],
+  "RFdiffusion": [
+    "R F diffusion",
+    "RF diffusion"
+  ],
+  "SQL": [
+    "ess cue ell",
+    "S Q L",
+    "sequel"
+  ],
+  "SiriusMindShare": [
+    "Sirius Mind Share",
+    "Sirius MindShare"
+  ],
+  "nginx": [
+    "engine X",
+    "engine-ex"
+  ],
+  "pgvector": [
+    "P G vector",
+    "PG vector"
+  ],
+  "reranking": [
+    "re-ranking",
+    "re ranking"
+  ],
+  "three.js": [
+    "three J S",
+    "three JS",
+    "three dot J S"
+  ]
+}

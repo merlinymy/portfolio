@@ -11,7 +11,7 @@ Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answe
 | 1. Capture | Done. Hair photos dropped: the hair comes from a free model, and the head is rebuilt from your scan and the three face photos (§5.1). See below. |
 | 2a. Moving face | Done. Built: the converter (`npm run face`); the 3D face with clips, eyes following the pointer or a finger (tilt dropped, §5.5); all 14 effects; the face states; the `?lab` panel with a lip-sync strength control; the six floating buttons (three movement styles in the lab) and the pop-up panels (§4.2); the still image for browsers without WebGL and the link-preview image (`npm run face:still`); browser tests (`npm run test:e2e`, 9 passing). |
 | 2b. Head and hair | **Paused (2026-10-21).** The core features (phases 3–7) come first. The realistic head, hair and bust will be modeled in Blender later and dropped in then (§5.8). The face-mesh-only wireframe stays as an artistic option. The code-generated head, hair and realistic mode stay in the lab until the Blender model replaces them. The site shows the face only, and the head file downloads only in the lab. |
-| 3. Voice | **In progress, on the MacBook Air (2026-10-21).** The bake-off ran for four voices; Pocket-TTS waits for your Hugging Face login (§6.3). Qwen3-TTS 0.6B leads on sound and speed, and you found Chatterbox's cadence more natural; two Qwen variants test where its flow is lost. `services/models/speak.py` turns a sentence into your voice plus word timing and mouth shapes. Next: you listen and pick, then the speeds are re-measured on the Mac mini. |
+| 3. Voice | **In progress, on the MacBook Air (2026-10-21).** You lean toward **Pocket-TTS**: it sounds very good to you and is by far the fastest. Its one weakness, jumbled tech names, is fixed with sound-it-out spellings (`services/models/pronunciations.json`). Fine-tuning is out. `services/models/speak.py` turns a sentence into your voice plus word timing and mouth shapes. Next: you confirm the spellings, then the speeds are re-measured on the Mac mini (§6.3). |
 
 **Phase 1 details:**
 - **Captured in the app,** each file checked:
@@ -769,6 +769,33 @@ rerun them; the listening page is `knowledge/voice/bakeoff/index.html`.
   what the chat needs before it can time the lips.
 - **Lip timing.** `speak.py` voiced a 14-word sentence (7.3 s of speech) in 4.7 s, then timed the
   words and mouth shapes in 0.3 s.
+
+**Pocket-TTS, after listening (2026-10-21).** You found it performs very well, and the only problem
+you heard was jumbled tech names. You also found the two Qwen variants worse than plain Qwen3-TTS
+0.6B. What was tried:
+- **The graphics chip is slower for it.** On the CPU, Kyutai's own package voices at 0.11 of real
+  time. mlx-audio's port to the graphics chip runs at 0.17, and it cut sentences short. The model
+  is tiny (219 MB) and makes audio a sliver at a time: each step is too small to keep the graphics
+  chip busy, and Apple's CPU cores are fast at small sequential work. Staying on two CPU cores also
+  leaves the graphics chip free for the aligner, speech-to-text and the search model.
+- **Fine-tuning is out.** Kyutai's training guide needs at least 100 hours of transcribed speech,
+  with 1,000+ for a strong model, plus Linux and an NVIDIA graphics card. Fine-tuning teaches a
+  new voice from many hours; one person's voice comes from a short sample instead, which is what
+  the bake-off already does.
+- **The larger 24-layer English model is no better.** It sounds no more like you, runs at 0.36–0.38
+  of real time instead of 0.12, and still cut the "This site uses…" line short.
+- **The end-of-speech setting doesn't matter.** Raising it changed nothing. The failures were the
+  model repeating a word ("JavaScript, JavaScript") in place of letters it couldn't read.
+- **Sound-it-out spellings fix the names.** They're in `services/models/pronunciations.json`,
+  chosen with `bakeoff/words.py`, which voices each spelling twice and checks it came out whole.
+  - With them, all nine names lines come out whole, up from six.
+  - Names you spell out (ARC, SQL, MPNN, judged by how long each took you) work best as letters or
+    as letter names written as words, such as "ess cue ell". Bare capitals like "SQL" got jumbled.
+  - Next: you check the spellings on `knowledge/voice/words/index.html`.
+- **A better reference clip is the main way left to sound more like you.** Pocket-TTS copies the
+  recording quality of its sample as well as the voice, and reads only its first 30 s. The current
+  sample was recorded while you were sick, so a clean 30 s re-recording, once you've recovered, may
+  help.
 
 ---
 

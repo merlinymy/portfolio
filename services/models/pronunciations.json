@@ -1,5 +1,19 @@
 {
-  "Qdrant": "quadrant",
+  "AlphaFold": "Alpha Fold",
+  "ARC": "A R C",
+  "AWS": "A W S",
+  "Burroughs": "Burrows",
+  "Cohere": "co here",
+  "FantastBioTech": "Fantast Bio Tech",
+  "FastAPI": "Fast API",
+  "FireProofSheep": "Fire Proof Sheep",
+  "nginx": "engine X",
+  "PaperPrism": "paper prism",
   "pgvector": "P G vector",
-  "nginx": "engine X"
+  "ProteinMPNN": "protein em pee en en",
+  "Qdrant": "quadrant",
+  "RFdiffusion": "R F diffusion",
+  "SiriusMindShare": "Sirius Mind Share",
+  "SQL": "ess cue ell",
+  "three.js": "three J S"
 }

@@ -13,7 +13,7 @@ Writes <name>.wav and <name>.json, which holds:
 - visemes: [seconds, shape] pairs; each shape holds until the next one. "sil" is the closed,
   resting mouth.
 
-Run: cd services/models && uv run speak.py "A sentence to say." [--model qwen-0.6b] [--out <dir>]
+Run: cd services/models && uv run speak.py "A sentence to say." [--model pocket] [--out <dir>]
 The output goes to knowledge/voice/speak/ unless --out says otherwise, since it's your voice.
 """
 
@@ -30,7 +30,7 @@ import soundfile as sf
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE / "bakeoff"))
-from common import RATE, ROOT  # noqa: E402
+from common import RATE, ROOT, pronunciations, respell  # noqa: E402
 from run import ENGINES, MODELS, resample  # noqa: E402
 
 ALIGNER = "mlx-community/Qwen3-ForcedAligner-0.6B-8bit"
@@ -38,7 +38,6 @@ ALIGNER = "mlx-community/Qwen3-ForcedAligner-0.6B-8bit"
 CMUDICT_VERSION = "74790861f652b15e4ac49015a90074ad62a27690"
 CMUDICT_URL = f"https://raw.githubusercontent.com/cmusphinx/cmudict/{CMUDICT_VERSION}/cmudict.dict"
 CACHE = Path.home() / ".cache/portfolio-models"
-RESPELL = HERE / "pronunciations.json"
 GAP = 0.1  # seconds of silence between words before the mouth closes
 
 # Speech sounds (ARPAbet, the dictionary's notation) to the face's mouth shapes.
@@ -66,6 +65,13 @@ LETTER = {
     "a": "AE", "b": "B", "c": "K", "d": "D", "e": "EH", "f": "F", "g": "G", "h": "HH", "i": "IH",
     "j": "JH", "k": "K", "l": "L", "m": "M", "n": "N", "o": "AA", "p": "P", "q": "K", "r": "R",
     "s": "S", "t": "T", "u": "AH", "v": "V", "w": "W", "x": "K", "y": "Y", "z": "Z",
+}
+# Letters said by name, for spelled-out names like "A W S".
+LETTER_NAME = {
+    "a": "EY", "b": "B IY", "c": "S IY", "d": "D IY", "e": "IY", "f": "EH F", "g": "JH IY", "h": "EY CH",
+    "i": "AY", "j": "JH EY", "k": "K EY", "l": "EH L", "m": "EH M", "n": "EH N", "o": "OW", "p": "P IY",
+    "q": "K Y UW", "r": "AA R", "s": "EH S", "t": "T IY", "u": "Y UW", "v": "V IY", "w": "D AH B AH L Y UW",
+    "x": "EH K S", "y": "W AY", "z": "Z IY",
 }
 ONES = "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split()
 TENS = "_ _ twenty thirty forty fifty sixty seventy eighty ninety".split()
@@ -109,23 +115,6 @@ def plain(word: str) -> str:
     return re.sub(r"[^a-z0-9']", "", word.lower())
 
 
-def respell(text: str, table: dict[str, str]) -> list[tuple[str, list[str]]]:
-    """Each on-screen word with the words the voice says for it."""
-    out: list[tuple[str, list[str]]] = []
-    for word in text.split():
-        lead, core, trail = re.match(r"^(\W*)(.*?)(\W*)$", word).groups()
-        if not core:  # a lone dash or quote: keep it in the voice's text for the pause it gives
-            if out:
-                out[-1][1][-1] += " " + word
-            continue
-        spoken = (table.get(core) or table.get(core.lower()) or core).split()
-        # The punctuation stays, since the voice model pauses and phrases by it.
-        spoken[0] = lead + spoken[0]
-        spoken[-1] = spoken[-1] + trail
-        out.append((word, spoken))
-    return out
-
-
 def mouth_shapes(words: list[tuple[list[str], float, float]], pronouncer: Pronouncer) -> list[list]:
     """Spreads each word's sounds across its time, vowels longer than consonants, and lists where
     the mouth shape changes."""
@@ -134,7 +123,14 @@ def mouth_shapes(words: list[tuple[list[str], float, float]], pronouncer: Pronou
     for spoken, start, end in words:
         if start - previous_end >= GAP:
             events.append([round(previous_end, 3), "sil"])
-        sounds = [s for w in spoken for s in pronouncer.sounds(w)]
+        # A name respelled as several words may spell letters out ("P G vector"): say those by name,
+        # since the dictionary reads a lone "a" as the word "a".
+        spelled = len(spoken) > 1
+        sounds = [
+            s
+            for w in spoken
+            for s in (LETTER_NAME[plain(w)].split() if spelled and len(plain(w)) == 1 and plain(w) in LETTER_NAME else pronouncer.sounds(w))
+        ]
         weights = [1.6 if s in VOWELS else 0.7 if s in STOPS else 1.0 for s in sounds]
         t = start
         shapes = [VISEME.get(s, "sil") for s in sounds]
@@ -166,7 +162,7 @@ def align(aligner, wav: Path, groups: list[tuple[str, list[str]]]) -> list[tuple
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("text")
-    parser.add_argument("--model", default="qwen-0.6b", choices=list(MODELS))
+    parser.add_argument("--model", default="pocket", choices=list(MODELS))
     parser.add_argument("--out", type=Path, default=ROOT / "knowledge/voice/speak")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
@@ -176,14 +172,13 @@ def main() -> None:
 
     started = time.perf_counter()
     kind, repo, options = MODELS[args.model]
-    voice = ENGINES[kind](repo, options.get("reference"))
+    voice = ENGINES[kind](repo, options)
     list(voice.say("Thanks for stopping by.", 0))
     aligner = load(ALIGNER)
     pronouncer = Pronouncer()
     print(f"loaded in {time.perf_counter() - started:.1f} s")
 
-    table = json.loads(RESPELL.read_text()) if RESPELL.exists() else {}
-    groups = respell(args.text, table)
+    groups = respell(args.text, pronunciations())
     spoken_text = " ".join(w for _, ws in groups for w in ws)
 
     started = time.perf_counter()

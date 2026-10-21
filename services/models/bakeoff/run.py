@@ -22,7 +22,7 @@ import time
 import numpy as np
 import soundfile as sf
 
-from common import OUT, RATE, REF, YOU, level, lines, sentences, words
+from common import OUT, RATE, REF, YOU, level, lines, pronunciations, sentences, spoken, words
 
 QWEN_SMALL = "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-8bit"
 # name: (engine, model repo, options). Options:
@@ -31,6 +31,9 @@ QWEN_SMALL = "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-8bit"
 # - reference: copy the voice from your own take of this line (bakeoff/you/<line>.wav) instead of
 #   sample.m4a. Your answers are conversational where the sample is a scripted reading, so the
 #   cadence copied differs. That line itself is then an unfair comparison: the model heard you say it.
+# - respell: say tricky names by their sound-it-out spellings from pronunciations.json (§6.1).
+# - language: which of Kyutai's Pocket-TTS models to load (see pocket_tts/config); the default
+#   "english" is their small model, and "english_2026-09_24l" their larger 24-layer one.
 MODELS = {
     "qwen-0.6b": ("qwen", QWEN_SMALL, {}),
     "qwen-0.6b-whole": ("qwen", QWEN_SMALL, {"whole": True}),
@@ -39,6 +42,9 @@ MODELS = {
     "chatterbox-turbo": ("chatterbox", "mlx-community/chatterbox-turbo-fp16", {}),
     "chatterbox-turbo-8bit": ("chatterbox", "mlx-community/chatterbox-turbo-8bit", {}),
     "pocket": ("pocket", None, {}),
+    "pocket-respelled": ("pocket", None, {"respell": True}),
+    "pocket-24l": ("pocket", None, {"language": "english_2026-09_24l"}),
+    "pocket-24l-respelled": ("pocket", None, {"language": "english_2026-09_24l", "respell": True}),
 }
 PAUSE = 0.25  # seconds of silence between sentences in a joined line
 WARM_UP = "Thanks for stopping by."
@@ -57,9 +63,11 @@ def cap_mlx_cache() -> None:
 class Qwen:
     """Qwen3-TTS Base on the graphics chip. It copies from 20–30 s of audio plus its transcript."""
 
-    def __init__(self, repo: str, reference: str | None = None):
+    def __init__(self, repo: str, options: dict):
         from mlx_audio.tts.utils import load_model
         from mlx_audio.utils import load_audio
+
+        reference = options.get("reference")
 
         cap_mlx_cache()
         self.model = load_model(repo)
@@ -84,7 +92,7 @@ class Qwen:
 class Chatterbox:
     """Chatterbox Turbo on the graphics chip. It reads the first 10–15 s of the reference itself."""
 
-    def __init__(self, repo: str, reference: str | None = None):
+    def __init__(self, repo: str, options: dict):
         from mlx_audio.tts.utils import load_model
 
         cap_mlx_cache()
@@ -103,10 +111,10 @@ class Chatterbox:
 class Pocket:
     """Pocket-TTS on the CPU through PyTorch, leaving the graphics chip free."""
 
-    def __init__(self, _repo: None, reference: str | None = None):
+    def __init__(self, _repo: None, options: dict):
         from pocket_tts import TTSModel
 
-        self.model = TTSModel.load_model()
+        self.model = TTSModel.load_model(language=options.get("language"))
         self.rate = self.model.sample_rate
         self.voice = self.model.get_state_for_audio_prompt(str(REF / "ref.wav"), truncate=True)
 
@@ -136,7 +144,8 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
 
     started = time.perf_counter()
-    engine = ENGINES[kind](repo, options.get("reference"))
+    engine = ENGINES[kind](repo, options)
+    table = pronunciations() if options.get("respell") else {}
     list(engine.say(WARM_UP, 0))
     load_s = time.perf_counter() - started
     print(f"{name}: loaded and warmed up in {load_s:.1f} s", flush=True)
@@ -149,7 +158,7 @@ def main() -> None:
             started = time.perf_counter()
             first = None
             chunks = []
-            for chunk in engine.say(sentence, seed):
+            for chunk in engine.say(spoken(sentence, table), seed):
                 first = first or time.perf_counter() - started
                 chunks.append(chunk)
             seconds = time.perf_counter() - started
