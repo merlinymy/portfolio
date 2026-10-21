@@ -1,4 +1,0 @@
-# Files in this folder that are not uploaded to Cloudflare (.gitignore syntax).
-# The résumé has a phone number in it. Upload it again once a version without one replaces it.
-Merlin_Yang_Resume.pdf
-.assetsignore

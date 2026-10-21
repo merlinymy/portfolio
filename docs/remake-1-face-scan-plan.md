@@ -6,7 +6,7 @@ Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answe
 
 | Phase | State |
 |---|---|
-| 0. Site setup | Done: Astro + React site with six crawlable panels (commit `65c9432`). The Cloudflare config is ready and tested locally; the first deploy waits on your Cloudflare account. |
+| 0. Site setup | Done: Astro + React site with six crawlable panels (commit `65c9432`), live on Cloudflare Workers at a temporary `workers.dev` address (commit `5cb11a0`). Deploys automatically on each push to this branch. |
 | 0b. Domain | To do alongside 2a: move merlinyang.com's DNS from Namecheap to Cloudflare, keeping the current site and email forwarding working |
 | 1. Capture | Done. Hair photos dropped: the hair comes from a free model, and the head is rebuilt from your scan and the three face photos (§5.1). See below. |
 | 2a. Moving face | **Next:** converter, 3D face following the pointer and tilt, effects lab |
