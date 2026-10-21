@@ -145,3 +145,9 @@ profile/
 knowledge/
 # Vite dependency cache
 .vite/
+# Raw face captures from the iPhone app (the build writes apps/site/public/face/)
+tools/face/raw/
+# Xcode per-user state
+xcuserdata/
+# SwiftPM / SourceKit build and index output
+.build/
