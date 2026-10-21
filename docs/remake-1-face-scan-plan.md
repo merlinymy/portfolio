@@ -11,7 +11,7 @@ Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answe
 | 1. Capture | Done. Hair photos dropped: the hair comes from a free model, and the head is rebuilt from your scan and the three face photos (§5.1). See below. |
 | 2a. Moving face | Done. Built: the converter (`npm run face`); the 3D face with clips, eyes following the pointer or a finger (tilt dropped, §5.5); all 14 effects; the face states; the `?lab` panel with a lip-sync strength control; the six floating buttons (three movement styles in the lab) and the pop-up panels (§4.2); the still image for browsers without WebGL and the link-preview image (`npm run face:still`); browser tests (`npm run test:e2e`, 9 passing). |
 | 2b. Head and hair | **Paused (2026-10-21).** The core features (phases 3–7) come first. The realistic head, hair and bust will be modeled in Blender later and dropped in then (§5.8). The face-mesh-only wireframe stays as an artistic option. The code-generated head, hair and realistic mode stay in the lab until the Blender model replaces them. The site shows the face only, and the head file downloads only in the lab. |
-| 3. Voice | **In progress, on the MacBook Air (2026-10-21).** The bake-off ran for four voices; Pocket-TTS waits for your Hugging Face login (§6.3). Qwen3-TTS 0.6B leads: it sounds most like you by a voiceprint estimate and runs faster than real time. `services/models/speak.py` turns a sentence into your voice plus word timing and mouth shapes. Next: you listen and pick, then the speeds are re-measured on the Mac mini. |
+| 3. Voice | **In progress, on the MacBook Air (2026-10-21).** The bake-off ran for four voices; Pocket-TTS waits for your Hugging Face login (§6.3). Qwen3-TTS 0.6B leads on sound and speed, and you found Chatterbox's cadence more natural; two Qwen variants test where its flow is lost. `services/models/speak.py` turns a sentence into your voice plus word timing and mouth shapes. Next: you listen and pick, then the speeds are re-measured on the Mac mini. |
 
 **Phase 1 details:**
 - **Captured in the app,** each file checked:
@@ -727,22 +727,36 @@ each model sounds and roughly how fast it is. It has no fan and slows down under
 anything is decided on speed.
 
 **First results on the MacBook Air (2026-10-21).** Every voice copied your reference recording
-(`sample.m4a`; Qwen3-TTS uses its first 21 s with the transcript, Chatterbox its first 10–15 s) and
+(`sample.m4a`; Qwen3-TTS uses its first 21 s with the transcript, Chatterbox its first 10–15 s,
+Pocket-TTS its first 30 s) and
 read the same 18 lines from your recording script. `services/models/README.md` explains how to
 rerun them; the listening page is `knowledge/voice/bakeoff/index.html`.
 
 | Voice | Sounds like you | Speed (RTF) | First sound | Short sentence, whole | Memory |
 |---|---|---|---|---|---|
 | Qwen3-TTS 0.6B | 0.98 | 0.73 | 0.9 s | 1.9 s | 4.3 GB |
+| Qwen3-TTS 0.6B, whole answers | 0.97 | 0.52 | 0.7 s | – | 4.0 GB |
+| Qwen3-TTS 0.6B, whole answers, conversational reference | 0.99 | 0.53 | 0.8 s | – | 4.3 GB |
 | Qwen3-TTS 1.7B | 0.97 | 1.04 | 1.6 s | 2.4 s | 5.1 GB |
 | Chatterbox Turbo | 0.92 | 0.78 | 3.1 s | 1.9 s | 5.6 GB |
 | Chatterbox Turbo, 8-bit | 0.92 | 0.50 | 2.1 s | 1.3 s | 3.9 GB |
+| Pocket-TTS (on the CPU) | 0.88 | 0.12 | 0.04 s | 0.3 s | 2.7 GB |
 
 - **Sounds like you:** an estimate from a voiceprint model, which turns a recording into numbers
   that match for the same voice. Your own takes score 1.00 against each other, and a stranger (the
   Mac's built-in voices) scores 0.73–0.78. Your ears decide.
-- **All four say the words right.** Parakeet's transcript of each model matches the script as
-  closely as its transcript of you.
+- **Your first impression (2026-10-21):** Qwen3-TTS 0.6B has the best overall quality and
+  accuracy, and Chatterbox Turbo the most natural flow and cadence. Two Qwen variants test where
+  the flow is lost:
+  - **Whole answers:** each answer voiced in one go, so the intonation carries across sentences.
+    It's also faster, with fewer calls.
+  - **Conversational reference:** the voice is copied from your take of a Part 3 answer instead of
+    the scripted reading in `sample.m4a`. That take comes from the same recording as the takes it's
+    scored against, which may lift its score a little.
+- **Words said right.** Parakeet's transcript of each voice matches the script about as closely as
+  its transcript of you. The exception is Pocket-TTS, which dropped "with pgvector in Postgres" from
+  one names line.
+- **Pocket-TTS** is by far the fastest and leaves the graphics chip free, but sounds least like you.
 - **Speed (RTF)** is seconds of computing per second of speech; under 1 keeps ahead of playback.
   Qwen3-TTS 1.7B is just slower than real time on the Air.
 - **Memory is higher than the 1–2 GB estimated in §3.4**, at 4–6 GB per voice. That's even with

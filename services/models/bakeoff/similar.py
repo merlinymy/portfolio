@@ -71,11 +71,14 @@ def main() -> None:
         m = np.mean(vs, axis=0)
         return m / np.linalg.norm(m)
 
-    ids = [line for line, _ in lines() if (YOU / f"{line}.wav").exists()]
-    halves = (ids[0::2], ids[1::2])
-    yours = {i: voiceprint(YOU / f"{i}.wav") for i in ids}
+    every = [line for line, _ in lines() if (YOU / f"{line}.wav").exists()]
+    yours = {i: voiceprint(YOU / f"{i}.wav") for i in every}
     scores = {}
     for name, folder in [("you", YOU)] + [(n, OUT / n) for n in [*MODELS, *STRANGERS]]:
+        # A model that copied your take of a line would be compared with the very recording it copied.
+        copied = MODELS[name][2].get("reference") if name in MODELS else None
+        ids = [i for i in every if i != copied]
+        halves = (ids[0::2], ids[1::2])
         if not all((folder / f"{i}.wav").exists() for i in ids):
             continue
         theirs = yours if name == "you" else {i: voiceprint(folder / f"{i}.wav") for i in ids}

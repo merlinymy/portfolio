@@ -40,6 +40,10 @@ uv run bakeoff/bakeoff.py --report
 open ../../knowledge/voice/bakeoff/index.html
 ```
 
+The voices are listed in `MODELS` in `bakeoff/run.py`. Two options make variants of a voice:
+- `whole` voices each line in one go, instead of sentence by sentence.
+- `reference` copies the voice from your own take of a line, instead of `sample.m4a`.
+
 - **`prepare.py`** turns `sample.m4a` into the reference clip the models copy from. Parakeet
   transcribes it, because the models copy best when the transcript matches the recording word for
   word.

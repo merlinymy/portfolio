@@ -22,14 +22,23 @@ import time
 import numpy as np
 import soundfile as sf
 
-from common import OUT, RATE, REF, level, lines, sentences, words
+from common import OUT, RATE, REF, YOU, level, lines, sentences, words
 
+QWEN_SMALL = "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-8bit"
+# name: (engine, model repo, options). Options:
+# - whole: voice each line in one go instead of sentence by sentence, so the intonation carries
+#   across sentences. Streaming keeps the first sound as quick.
+# - reference: copy the voice from your own take of this line (bakeoff/you/<line>.wav) instead of
+#   sample.m4a. Your answers are conversational where the sample is a scripted reading, so the
+#   cadence copied differs. That line itself is then an unfair comparison: the model heard you say it.
 MODELS = {
-    "qwen-0.6b": ("qwen", "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-8bit"),
-    "qwen-1.7b": ("qwen", "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit"),
-    "chatterbox-turbo": ("chatterbox", "mlx-community/chatterbox-turbo-fp16"),
-    "chatterbox-turbo-8bit": ("chatterbox", "mlx-community/chatterbox-turbo-8bit"),
-    "pocket": ("pocket", None),
+    "qwen-0.6b": ("qwen", QWEN_SMALL, {}),
+    "qwen-0.6b-whole": ("qwen", QWEN_SMALL, {"whole": True}),
+    "qwen-0.6b-talk-whole": ("qwen", QWEN_SMALL, {"whole": True, "reference": "part3-4"}),
+    "qwen-1.7b": ("qwen", "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit", {}),
+    "chatterbox-turbo": ("chatterbox", "mlx-community/chatterbox-turbo-fp16", {}),
+    "chatterbox-turbo-8bit": ("chatterbox", "mlx-community/chatterbox-turbo-8bit", {}),
+    "pocket": ("pocket", None, {}),
 }
 PAUSE = 0.25  # seconds of silence between sentences in a joined line
 WARM_UP = "Thanks for stopping by."
@@ -48,15 +57,19 @@ def cap_mlx_cache() -> None:
 class Qwen:
     """Qwen3-TTS Base on the graphics chip. It copies from 20–30 s of audio plus its transcript."""
 
-    def __init__(self, repo: str):
+    def __init__(self, repo: str, reference: str | None = None):
         from mlx_audio.tts.utils import load_model
         from mlx_audio.utils import load_audio
 
         cap_mlx_cache()
         self.model = load_model(repo)
         self.rate = self.model.sample_rate
-        self.ref = load_audio(str(REF / "opening.wav"), sample_rate=self.rate)
-        self.ref_text = (REF / "opening.txt").read_text().strip()
+        if reference:
+            self.ref = load_audio(str(YOU / f"{reference}.wav"), sample_rate=self.rate)
+            self.ref_text = dict(lines())[reference]
+        else:
+            self.ref = load_audio(str(REF / "opening.wav"), sample_rate=self.rate)
+            self.ref_text = (REF / "opening.txt").read_text().strip()
 
     def say(self, text: str, seed: int):
         import mlx.core as mx
@@ -71,7 +84,7 @@ class Qwen:
 class Chatterbox:
     """Chatterbox Turbo on the graphics chip. It reads the first 10–15 s of the reference itself."""
 
-    def __init__(self, repo: str):
+    def __init__(self, repo: str, reference: str | None = None):
         from mlx_audio.tts.utils import load_model
 
         cap_mlx_cache()
@@ -90,7 +103,7 @@ class Chatterbox:
 class Pocket:
     """Pocket-TTS on the CPU through PyTorch, leaving the graphics chip free."""
 
-    def __init__(self, _repo: None):
+    def __init__(self, _repo: None, reference: str | None = None):
         from pocket_tts import TTSModel
 
         self.model = TTSModel.load_model()
@@ -118,12 +131,12 @@ def resample(audio: np.ndarray, rate: int) -> np.ndarray:
 
 def main() -> None:
     name = sys.argv[1]
-    kind, repo = MODELS[name]
+    kind, repo, options = MODELS[name]
     out = OUT / name
     out.mkdir(parents=True, exist_ok=True)
 
     started = time.perf_counter()
-    engine = ENGINES[kind](repo)
+    engine = ENGINES[kind](repo, options.get("reference"))
     list(engine.say(WARM_UP, 0))
     load_s = time.perf_counter() - started
     print(f"{name}: loaded and warmed up in {load_s:.1f} s", flush=True)
@@ -132,7 +145,7 @@ def main() -> None:
     seed = 1
     for line, text in lines():
         pieces = []
-        for sentence in sentences(text):
+        for sentence in [text] if options.get("whole") else sentences(text):
             started = time.perf_counter()
             first = None
             chunks = []

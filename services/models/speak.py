@@ -175,8 +175,8 @@ def main() -> None:
     from mlx_audio.stt import load
 
     started = time.perf_counter()
-    kind, repo = MODELS[args.model]
-    voice = ENGINES[kind](repo)
+    kind, repo, options = MODELS[args.model]
+    voice = ENGINES[kind](repo, options.get("reference"))
     list(voice.say("Thanks for stopping by.", 0))
     aligner = load(ALIGNER)
     pronouncer = Pronouncer()
