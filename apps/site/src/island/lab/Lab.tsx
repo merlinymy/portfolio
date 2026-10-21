@@ -18,7 +18,7 @@ import {
   type EffectMode,
   type EffectName,
 } from "../face/settings";
-import { FLAME, type LookStyle, type Param, type ParamValues } from "../face/looks/params";
+import { FLAME, INK, type LookStyle, type Param, type ParamValues } from "../face/looks/params";
 import { useSay } from "./say";
 
 function slider<T extends object, K extends keyof T>(
@@ -41,22 +41,32 @@ function slider<T extends object, K extends keyof T>(
   };
 }
 
-/** A look's sliders, one per parameter, with its label and note from looks/params.ts. */
+/** A look's controls, one per parameter (a slider, or a color), with its label and note from looks/params.ts. */
 function lookControls<T extends Record<string, Param>>(prefix: string, spec: T, values: ParamValues<T>) {
+  const target = values as Record<string, number | string>;
   return Object.fromEntries(
     Object.entries(spec).map(([key, p]) => [
       `${prefix}_${key}`,
-      {
-        value: values[key as keyof T],
-        min: p.min,
-        max: p.max,
-        step: p.step,
-        label: p.label,
-        hint: p.hint,
-        onChange: (v: number) => {
-          values[key as keyof T] = v;
-        },
-      },
+      "min" in p
+        ? {
+            value: target[key] as number,
+            min: p.min,
+            max: p.max,
+            step: p.step,
+            label: p.label,
+            hint: p.hint,
+            onChange: (v: number) => {
+              target[key] = v;
+            },
+          }
+        : {
+            value: target[key] as string,
+            label: p.label,
+            hint: p.hint,
+            onChange: (v: string) => {
+              target[key] = v;
+            },
+          },
     ]),
   );
 }
@@ -84,7 +94,7 @@ export default function Lab({ data }: { data: FaceData }) {
     lookStyle: {
       value: looks.style,
       label: "look",
-      options: { "points and edges": "scan", flame: "flame" } satisfies Record<string, LookStyle>,
+      options: { "points and edges": "scan", flame: "flame", "ink in water": "ink" } satisfies Record<string, LookStyle>,
       hint: "How the face is drawn. Each look has its own folder of settings below; view size and lights stay under Look.",
       onChange: (v: LookStyle) => {
         looks.style = v;
@@ -94,6 +104,7 @@ export default function Lab({ data }: { data: FaceData }) {
     "frame time (ms)": monitor(() => control.frameMs, { graph: true, interval: 250 }),
   });
   useControls("Flame", lookControls("flame", FLAME, looks.flame), { collapsed: looks.style !== "flame" });
+  useControls("Ink in water", lookControls("ink", INK, looks.ink), { collapsed: looks.style !== "ink" });
 
   const half = Math.ceil(FACE_STATES.length / 2);
   const stateButtons = (label: string, states: readonly (typeof FACE_STATES)[number][]) =>

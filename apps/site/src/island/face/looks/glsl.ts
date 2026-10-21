@@ -100,3 +100,15 @@ vec3 fireRamp(float h, vec3 tint, float amount) {
   return c * (1.0 + max(h - 1.2, 0.0) * 0.6);
 }
 `;
+
+/**
+ * Caustics: the moving net of bright lines that sunlight makes underwater once ripples have bent
+ * it. Two layers of noise ridges cross to make the net. Needs `noise` before it.
+ */
+export const caustics = /* glsl */ `
+float caustic(vec2 p, float t) {
+  float a = 1.0 - abs(snoise(vec3(p, t)));
+  float b = 1.0 - abs(snoise(vec3(p * 1.37 + vec2(4.1, 1.7), -t * 0.83)));
+  return pow(a, 7.0) + pow(b, 7.0) + pow(a * b, 3.0) * 0.5;
+}
+`;

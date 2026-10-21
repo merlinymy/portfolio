@@ -7,7 +7,7 @@
  */
 import type { ClipName } from "./data";
 import type { HairSettings } from "./hair";
-import { FLAME, type FlameSettings, type LookStyle, defaultsOf } from "./looks/params";
+import { FLAME, INK, type FlameSettings, type InkSettings, type LookStyle, defaultsOf } from "./looks/params";
 import defaults from "./settings.json";
 
 export const EFFECTS = {
@@ -147,7 +147,7 @@ export interface Settings {
   states: Record<FaceState, { color: string; brightness: number }>;
   effects: Record<EffectName, EffectSettings>;
   /** How the face is drawn (docs/face-looks-plan.md): "scan" is the points and edges. */
-  looks: { style: LookStyle; flame: FlameSettings };
+  looks: { style: LookStyle; flame: FlameSettings; ink: InkSettings };
 }
 
 /**
@@ -162,7 +162,11 @@ function withLookDefaults(json: typeof defaults): Settings {
   const saved = (json as Partial<Settings>).looks;
   return {
     ...(json as unknown as Settings),
-    looks: { style: saved?.style ?? "scan", flame: { ...defaultsOf(FLAME), ...saved?.flame } },
+    looks: {
+      style: saved?.style ?? "scan",
+      flame: { ...defaultsOf(FLAME), ...saved?.flame },
+      ink: { ...defaultsOf(INK), ...saved?.ink },
+    },
   };
 }
 

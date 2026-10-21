@@ -1,6 +1,6 @@
 # Face looks: artistic styles for the face
 
-Status: **step 1 built (2026-10-21):** the look switcher, the frame-time readout and the flame look. Next: ink in water.
+Status: **steps 1 and 2 built (2026-10-21):** the look switcher, the frame-time readout, flame, and ink in water. Next: face of water.
 
 Today the face is drawn as glowing points and edges. This plan adds other **looks**: different ways
 of drawing the same moving face. Each is a set of shaders, small programs that run on the graphics

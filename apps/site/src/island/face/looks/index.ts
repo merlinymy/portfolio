@@ -4,12 +4,14 @@
  */
 import type { Look, LookParts } from "./common";
 import { createFlame } from "./flame";
+import { createInk } from "./ink";
 import type { LookStyle } from "./params";
 
 export type { Look, LookFrame } from "./common";
 
 const BUILDERS: Record<Exclude<LookStyle, "scan">, (parts: LookParts) => Look> = {
   flame: createFlame,
+  ink: createInk,
 };
 
 export function createLook(style: LookStyle, parts: LookParts): Look | undefined {

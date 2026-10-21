@@ -21,6 +21,8 @@ import {
   RGBAFormat,
   Scene,
   type ShaderMaterial,
+  type Vector2,
+  Vector3,
   WebGLRenderTarget,
   type WebGLRenderer,
 } from "three";
@@ -151,6 +153,69 @@ export function lookSurface({ data, scene }: LookParts) {
   geometry.setAttribute("aExpressive", new BufferAttribute(expressive, 1));
   geometry.setAttribute("aEdge", new BufferAttribute(edge, 1));
   return geometry;
+}
+
+const holes = new WeakMap<FaceData, { outline: number[]; mouth: number[]; eyes: number[][] }>();
+
+/**
+ * The scan's openings, as lists of the points around each: its outline, and the holes at the eyes
+ * and the mouth. An opening's edges are the ones only one triangle uses. The biggest is the outline;
+ * of the rest, the lowest is the mouth.
+ */
+export function openings(data: FaceData) {
+  let found = holes.get(data);
+  if (found) return found;
+  const uses = new Map<number, number>();
+  const t = data.triangles;
+  for (let i = 0; i < t.length; i += 3) {
+    for (let k = 0; k < 3; k++) {
+      const a = t[i + k];
+      const b = t[i + ((k + 1) % 3)];
+      const key = Math.min(a, b) * 65536 + Math.max(a, b);
+      uses.set(key, (uses.get(key) ?? 0) + 1);
+    }
+  }
+  const next = new Map<number, number[]>();
+  for (const [key, n] of uses) {
+    if (n !== 1) continue;
+    const a = Math.floor(key / 65536);
+    const b = key % 65536;
+    next.set(a, [...(next.get(a) ?? []), b]);
+    next.set(b, [...(next.get(b) ?? []), a]);
+  }
+  const loops: number[][] = [];
+  const seen = new Set<number>();
+  for (const start of next.keys()) {
+    if (seen.has(start)) continue;
+    const loop: number[] = [];
+    const stack = [start];
+    seen.add(start);
+    while (stack.length) {
+      const v = stack.pop()!;
+      loop.push(v);
+      for (const w of next.get(v) ?? []) {
+        if (!seen.has(w)) {
+          seen.add(w);
+          stack.push(w);
+        }
+      }
+    }
+    loops.push(loop);
+  }
+  loops.sort((a, b) => b.length - a.length);
+  const height = (loop: number[]) => loop.reduce((sum, v) => sum + data.base[v * 3 + 1], 0) / loop.length;
+  const inner = loops.slice(1).sort((a, b) => height(a) - height(b));
+  found = { outline: loops[0] ?? [], mouth: inner[0] ?? [], eyes: inner.slice(1) };
+  holes.set(data, found);
+  return found;
+}
+
+const projected = new Vector3();
+
+/** Where a point in the scene appears in the view, from (0, 0) at the bottom left to (1, 1). */
+export function screenUv(point: Vector3, camera: PerspectiveCamera, out: Vector2) {
+  projected.copy(point).project(camera);
+  return out.set((projected.x + 1) / 2, (projected.y + 1) / 2);
 }
 
 /** For drawing over the whole view: a vertex shader that ignores the camera. */

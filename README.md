@@ -41,10 +41,10 @@ Add `?lab` to the address, for example http://localhost:4321/?lab. A control pan
 - every face effect, with on, off or "auto" (whatever the face's current state uses)
 - the motion settings
 - buttons for each face state
-- **Style:** how the face is drawn. "points and edges" is the original; "flame" is the first of the
+- **Style:** how the face is drawn. "points and edges" is the original; "flame" and "ink in water" are
   artistic looks (docs/face-looks-plan.md). Each look has its own folder of settings, and hovering a
   setting shows what it does. "frame time" shows how long each frame takes to draw (16.7 ms is 60
-  frames a second). Add `&look=flame` to the address to open straight into a look.
+  frames a second). Add `&look=flame` or `&look=ink` to the address to open straight into a look.
 - **Say** (only with `npm run dev`): type a sentence and the face says it in your cloned voice, with
   its lips timed to the words. Start the voice first with `npm run voice`; it takes about 5 s to
   load. "lip lead" under Motion sets how far the mouth moves ahead of the sound. To try it on your
