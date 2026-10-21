@@ -15,16 +15,14 @@
     "headShare": 0.55,
     "headSmoothing": 0.22,
     "eyeSmoothing": 0.06,
-    "clipHead": 1,
-    "lipSync": 1.6,
-    "tiltRange": 25,
-    "tiltInvert": false
+    "clipHead": 0.15,
+    "lipSync": 1.6
   },
   "buttons": {
-    "style": "head",
-    "spread": 1,
+    "style": "ring",
+    "spread": 1.11,
     "speed": 1,
-    "bob": 1
+    "bob": 0.8
   },
   "states": {
     "sleeping": { "color": "#6f8fd6", "brightness": 0.55 },

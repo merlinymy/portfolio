@@ -90,14 +90,6 @@ export default function Lab({ data }: { data: FaceData }) {
     eyeSmoothing: slider(m, "eyeSmoothing", 0, 0.5, 0.01, "eye smoothing (s)"),
     clipHead: slider(m, "clipHead", 0, 2, 0.05, "recorded head sway"),
     lipSync: slider(m, "lipSync", 0.5, 3, 0.05, "lip-sync strength"),
-    tiltRange: slider(m, "tiltRange", 5, 60, 1, "tilt for full look (°)"),
-    tiltInvert: {
-      value: m.tiltInvert,
-      label: "invert tilt",
-      onChange: (v: boolean) => {
-        m.tiltInvert = v;
-      },
-    },
   });
 
   const b = settings.buttons;

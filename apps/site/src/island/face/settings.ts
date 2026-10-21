@@ -45,7 +45,7 @@ interface StateInfo {
   clip: ClipName;
   /** Effects this state turns on when their mode is "auto". */
   effects: EffectName[];
-  /** How strongly the face follows the pointer or tilt, 0–1. */
+  /** How strongly the face follows the pointer or a finger, 0–1. */
   follow: number;
 }
 
@@ -96,9 +96,6 @@ export interface Settings {
     clipHead: number;
     /** Exaggerates the captured mouth shapes, measured from the resting mouth. */
     lipSync: number;
-    /** Degrees of phone tilt for a full look. */
-    tiltRange: number;
-    tiltInvert: boolean;
   };
   /** How the six profile buttons move around the head on wide screens (plan §4.2). */
   buttons: {

@@ -9,7 +9,7 @@ Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answe
 | 0. Site setup | Done: Astro + React site with six crawlable panels (commit `65c9432`), live on Cloudflare Workers at a temporary `workers.dev` address (commit `5cb11a0`). Deploys automatically on each push to this branch. |
 | 0b. Domain | Done: merlinyang.com's DNS is on Cloudflare (registration stays at Namecheap), and the current Vercel site still loads. There was no email forwarding to recreate. The tunnel hostname comes in phase 5. |
 | 1. Capture | Done. Hair photos dropped: the hair comes from a free model, and the head is rebuilt from your scan and the three face photos (§5.1). See below. |
-| 2a. Moving face | Done, apart from checks on real phones (below). Built: the converter (`npm run face`); the 3D face with clips, eyes following the pointer, finger and tilt; all 14 effects; the face states; the `?lab` panel with a lip-sync strength control; the six floating buttons (three movement styles in the lab) and the pop-up panels (§4.2); the still image for browsers without WebGL and the link-preview image (`npm run face:still`); browser tests (`npm run test:e2e`, 9 passing). |
+| 2a. Moving face | Done. Built: the converter (`npm run face`); the 3D face with clips, eyes following the pointer or a finger (tilt dropped, §5.5); all 14 effects; the face states; the `?lab` panel with a lip-sync strength control; the six floating buttons (three movement styles in the lab) and the pop-up panels (§4.2); the still image for browsers without WebGL and the link-preview image (`npm run face:still`); browser tests (`npm run test:e2e`, 9 passing). |
 | 2b. Head and hair | Next, or phase 3 (voice) first: your call |
 
 **Phase 1 details:**
@@ -33,11 +33,10 @@ Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answe
   narrower screens they sit in rows at the bottom, until the chat box arrives in phase 6 and they
   move into an arc above it. Panels open as a sheet on the right on screens 900 px and wider (the
   face slides left and glances toward it) and fill the screen below that.
-- **To check on real devices** (plan §9), since a desktop browser can't test them:
-  - iPhone Safari: the "Follow my tilt" button and tilt.
-  - Android Chrome: tilt.
-  - A finger dragged across the face.
-  - Reduced motion turned on.
+- **Checked on your iPhone (2026-10-21):** a finger dragged across the face steers it, and the
+  panels feel right. Still to check: reduced motion turned on.
+- **Defaults you set from the lab (2026-10-21):** recorded head sway 0.15; buttons in the still
+  ring style, distance 1.11, speed 1, bob 0.8.
 - **Download size.** The 3D code is 260 KB compressed, mostly three.js and React Three Fiber, and
   loads after the page text. The face files add about 165 KB. Replacing React Three Fiber with plain
   three.js would save an estimated 60–100 KB **(estimate)**, if load time turns out to matter.
@@ -55,7 +54,7 @@ The home page is one screen with three parts.
   vertices) and lines (the edges between them).
   - A custom shader animates it with ripples, waves, wind and more. A shader is a small program on
     the graphics chip that moves and colors every point each frame.
-  - The face turns toward the mouse pointer or a finger, and on phones it can follow the device's tilt.
+  - The face turns toward the mouse pointer or a finger.
 - **Six floating buttons** around the face: About, Experience, Projects, Skills, Résumé, Contact.
   Each one opens a panel of plain text. The text is real HTML from the start, so search engines,
   AI crawlers and link-preview bots can read all of it, just like a plain HTML portfolio.
@@ -501,24 +500,22 @@ Each layer overrides the one before it for the sliders it controls:
    clip's mouth and jaw sliders are muted, because the clip's mouth was saying different words and
    would fight the lip-sync.
 3. **Lip-sync.** Mouth and jaw sliders from the viseme timeline (§6.2).
-4. **Look-at.** Head rotation toward the pointer, the device tilt, a hovered button or an open
+4. **Look-at.** Head rotation toward the pointer, a finger, a keyboard-focused button or an open
    panel, plus the eye sliders and eye rings.
 5. **Shader effects** (§5.6).
 
-### 5.5 Pointer and tilt
+### 5.5 Pointer and touch
 
 - **Desktop.** The head turns toward the pointer, smoothed, with a limit of about ±25° left-right
   and ±15° up-down. The scan is only the front of the face, so turning further would show that it's
   a hollow mask. The eyes turn further than the head.
 - **Touch.** The face follows the finger while it touches the screen, then drifts back to center.
-- **Tilt.**
-  - On iPhone, Safari only shares motion data after the visitor taps a button, so a small "Follow
-    my tilt" button asks for permission.
-  - Android Chrome needs no permission over HTTPS.
-  - The first reading becomes "straight ahead", because people hold phones at an angle.
-  - Readings are smoothed so the face doesn't jitter.
+- **No tilt (dropped 2026-10-21).** Following the phone's tilt was built and then removed.
+  - On iPhone, Safari only shares motion data after the visitor taps a permission button, and that
+    button sat among the six profile buttons.
+  - Dragging a finger across the face already steers it, so tilt added little for the clutter.
 - **Reduced motion.** `prefers-reduced-motion` is the operating-system setting for people who get
-  motion sickness. When it's on: no tilt, smaller head turns, still buttons, and minimal effects.
+  motion sickness. When it's on: smaller head turns, still buttons, and minimal effects.
 
 ### 5.6 Effects lab
 
@@ -979,8 +976,7 @@ Removed on this branch: `index.html`, `about.html`, `scripts/`, `styles/`, `asse
   - Stopping the API puts the face to sleep.
   - A third strike locks the chat while the panels still work.
 - **Devices:**
-  - iPhone Safari: the tilt permission flow, and the visitor cookie surviving more than 7 days.
-  - Android Chrome: tilt.
+  - iPhone Safari: the visitor cookie surviving more than 7 days.
   - Desktop with reduced motion turned on.
   - A browser with WebGL off: the still image shows and the panels work.
 - **Speed:**
@@ -996,7 +992,7 @@ Each phase ends with something you can see working.
 | 0     | Set up the Astro + React + TypeScript workspace; move the old site's content into `content/`; remove the old pages; deploy to a Cloudflare Workers address (`*.workers.dev`)     | The preview address shows six readable panels, and `curl` returns their text                                  |
 | 0b    | Move merlinyang.com's DNS to Cloudflare. Records keep pointing at Vercel, so the current site stays up. Recreate Namecheap's email forwarding in Cloudflare Email Routing, which stops working otherwise. Set up the tunnel hostname for the API.                                | DNS answers from Cloudflare; the current site and email forwarding are unchanged                                                    |
 | 1     | Build the iPhone app on your phone; add the new clips, viseme capture and the format README; capture your data                                                                 | `face.json`, 5 clips, `visemes.json`, `gaze.json` and the texture photos are on the Mac                                                                               |
-| 2     | Face rendering, motion layers, pointer and tilt, floating buttons, all effects, the `?lab` page                                                                                | The face follows the pointer and tilt, the buttons float and open panels, and every effect toggles in the lab |
+| 2     | Face rendering, motion layers, pointer and finger following, floating buttons, all effects, the `?lab` page                                                                                | The face follows the pointer and a finger, the buttons float and open panels, and every effect toggles in the lab |
 | 2b | Head and hair: in Blender, reshape a free base head around the exported face mesh using your texture photos, add a free hair model (§5.1), bake the face texture, import into the site, make the seam follow the face, render hair strands as lines (§5.1) | The full head turns with the pointer, and no seam shows when the face moves |
 | 3     | Native model server on the Mac and the voice bake-off                                                                                                                          | A script turns a sentence into your voice plus lip timing; RTF measured                                       |
 | 4     | Private knowledge folder, ingest into Postgres (pgvector + keyword search), search test                                                                                                                      | Your test questions pull the right passages                                                                   |

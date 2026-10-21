@@ -1,6 +1,6 @@
 /**
  * The 3D part of the face island, loaded only after the page's HTML is on screen (plan §5.3):
- * the canvas, the "Follow my tilt" button on iPhone, and the ?lab panel.
+ * the canvas and the ?lab panel.
  *
  * The stage's data-face attribute says what's showing, for tests and the still-image script:
  * "ready" once the 3D face draws, "still" when the fallback image shows instead.
@@ -12,7 +12,7 @@ import { Canvas } from "@react-three/fiber";
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { loadFace, type FaceData } from "./data";
 import { FOV, Face, type FaceButtons } from "./Face";
-import { LookInput, prefersReducedMotion, tiltNeedsPermission } from "./input";
+import { LookInput } from "./input";
 import { control, settings } from "./settings";
 
 const Lab = lazy(() => import("../lab/Lab"));
@@ -30,7 +30,6 @@ export default function FaceCanvas({ container, buttons }: { container: HTMLElem
   const [data, setData] = useState<FaceData>();
   const [input, setInput] = useState<LookInput>();
   const [visible, setVisible] = useState(true);
-  const [askTilt, setAskTilt] = useState(false);
   const [failed, setFailed] = useState(false);
   const supported = useMemo(hasWebGL2, []);
   const params = useMemo(() => new URLSearchParams(location.search), []);
@@ -75,10 +74,6 @@ export default function FaceCanvas({ container, buttons }: { container: HTMLElem
     return () => observer.disconnect();
   }, [container]);
 
-  useEffect(() => {
-    setAskTilt(tiltNeedsPermission() && matchMedia("(pointer: coarse)").matches && !prefersReducedMotion());
-  }, []);
-
   // Without WebGL, or if the face files didn't load, a still image of the face stands in.
   const still = !supported || failed;
   useEffect(() => {
@@ -101,17 +96,6 @@ export default function FaceCanvas({ container, buttons }: { container: HTMLElem
           <Face data={data} input={input} buttons={buttons} />
         </Canvas>
       </div>
-      {askTilt && (
-        <button
-          type="button"
-          className="tilt-button"
-          onClick={async () => {
-            if (await input.enableTilt().catch(() => false)) setAskTilt(false);
-          }}
-        >
-          Follow my tilt
-        </button>
-      )}
       {lab && (
         <Suspense fallback={null}>
           <Lab data={data} />
