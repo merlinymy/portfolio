@@ -11,9 +11,11 @@
   },
   "scripts": {
     "dev": "npm run dev -w @portfolio/site",
+    "dev:lan": "npm run dev -w @portfolio/site -- --host",
     "build": "npm run build -w @portfolio/site",
     "preview": "npm run preview -w @portfolio/site",
     "check": "npm run check -w @portfolio/site",
+    "voice": "cd services/models && uv run server.py",
     "face": "node tools/face/build.ts",
     "face:still": "node tools/face/still.ts",
     "test:e2e": "npm run build && playwright test",

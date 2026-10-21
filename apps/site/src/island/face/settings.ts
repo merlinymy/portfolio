@@ -132,6 +132,8 @@ export interface Settings {
     clipHead: number;
     /** Exaggerates the captured mouth shapes, measured from the resting mouth. */
     lipSync: number;
+    /** Seconds the mouth moves ahead of your voice, since lips form a shape just before the sound. */
+    lipLead: number;
   };
   /** How the six profile buttons move around the head on wide screens (plan §4.2). */
   buttons: {

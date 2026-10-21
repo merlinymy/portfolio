@@ -24,7 +24,8 @@
     "headSmoothing": 0.22,
     "eyeSmoothing": 0.06,
     "clipHead": 0.15,
-    "lipSync": 1.6
+    "lipSync": 1.6,
+    "lipLead": 0.05
   },
   "buttons": {
     "style": "ring",

@@ -24,6 +24,7 @@ import type { FaceData } from "./data";
 import { growHair } from "./hair";
 import { prefersReducedMotion, type LookInput } from "./input";
 import { Babbler, ClipBlend, ClipPlayer, Gaze, LipSync, Pose, approach, clamp, mixExpressions } from "./motion";
+import { speech } from "./speech";
 import { buildScene, hairShape, shapeHead } from "./scene";
 import {
   ALWAYS_ON,
@@ -172,10 +173,13 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
       pose.eyes.fill(0);
     } else rig.blend.sample(now, pose);
 
-    // 2–3. While speaking, the talking clip drives the upper face and lip-sync drives the mouth.
+    // 2–3. While speaking, the talking clip drives the upper face and lip-sync drives the mouth:
+    //      your voiced sentences' mouth shapes when they're playing, fake speech otherwise.
     const speaking = rig.state === "speaking";
     const previewing = control.viseme !== "off";
+    const voiced = speech.viseme(m.lipLead);
     if (previewing) rig.lip.setViseme(control.viseme);
+    else if (voiced) rig.lip.setViseme(voiced);
     else if (speaking && control.babble) {
       const shape = rig.babbler.update(now);
       if (shape) rig.lip.setViseme(shape);

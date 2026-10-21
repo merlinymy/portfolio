@@ -25,8 +25,10 @@ Run from the repo root, with Node 22.22 or newer:
 |---|---|
 | `npm install` | Installs everything |
 | `npm run dev` | Local dev server at http://localhost:4321 |
+| `npm run dev:lan` | The same, also reachable from phones on the same Wi-Fi (it prints the address) |
 | `npm run build` | Builds the static site into `apps/site/dist/` |
 | `npm run check` | Type-checks the site |
+| `npm run voice` | Starts the model server: your cloned voice with lip timing, on this Mac only ([services/models/README.md](services/models/README.md)). With `npm run dev` running too, the lab's "Say" box at http://localhost:4321/?lab makes the face speak a sentence |
 | `npm run face` | Turns the private face capture in `knowledge/faceScan/` into the site's `apps/site/public/face/` files ([tools/face/README.md](tools/face/README.md)) |
 | `npm run head` | Generates the head, neck, shoulders and ears around the face from your scan and texture photos ([tools/face/README.md](tools/face/README.md)) |
 | `npm run face:still` | After a build, renders the still face image (for browsers without 3D) and the link-preview image with Chrome. Build again afterwards to include them. |
@@ -39,6 +41,12 @@ Add `?lab` to the address, for example http://localhost:4321/?lab. A control pan
 - every face effect, with on, off or "auto" (whatever the face's current state uses)
 - the motion settings
 - buttons for each face state
+- **Say** (only with `npm run dev`): type a sentence and the face says it in your cloned voice, with
+  its lips timed to the words. Start the voice first with `npm run voice`; it takes about 5 s to
+  load. "lip lead" under Motion sets how far the mouth moves ahead of the sound. To try it on your
+  iPhone, start the site with `npm run dev:lan` instead, and open the address it prints under
+  "Network" with `?lab` added. The phone must be on the same Wi-Fi. Only one local site runs at a
+  time, so stop any other first (`npx astro dev stop` in `apps/site`, or Ctrl+C where it runs).
 
 **Export settings** copies the current values. Paste them over
 `apps/site/src/island/face/settings.json` to make them the defaults. Changes made in the panel

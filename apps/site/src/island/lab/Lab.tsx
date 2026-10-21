@@ -18,6 +18,7 @@ import {
   type EffectMode,
   type EffectName,
 } from "../face/settings";
+import { useSay } from "./say";
 
 function slider<T extends object, K extends keyof T>(
   target: T,
@@ -51,6 +52,10 @@ function exportSettings() {
 }
 
 export default function Lab({ data }: { data: FaceData }) {
+  // Your cloned voice, through the model server on this Mac: development only (say.ts). The
+  // condition is fixed when the site is built, so the hooks still run in the same order every time.
+  if (import.meta.env.DEV) useSay();
+
   const half = Math.ceil(FACE_STATES.length / 2);
   const stateButtons = (label: string, states: readonly (typeof FACE_STATES)[number][]) =>
     buttonGroup({ label, opts: Object.fromEntries(states.map((s) => [s, () => control.setState(s)])) });
@@ -90,6 +95,7 @@ export default function Lab({ data }: { data: FaceData }) {
     eyeSmoothing: slider(m, "eyeSmoothing", 0, 0.5, 0.01, "eye smoothing (s)"),
     clipHead: slider(m, "clipHead", 0, 2, 0.05, "recorded head sway"),
     lipSync: slider(m, "lipSync", 0.5, 3, 0.05, "lip-sync strength"),
+    lipLead: slider(m, "lipLead", -0.1, 0.25, 0.01, "lip lead (s)"),
   });
 
   const b = settings.buttons;
