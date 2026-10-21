@@ -11,7 +11,7 @@ Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answe
 | 1. Capture | Done. Hair photos dropped: the hair comes from a free model, and the head is rebuilt from your scan and the three face photos (§5.1). See below. |
 | 2a. Moving face | Done. Built: the converter (`npm run face`); the 3D face with clips, eyes following the pointer or a finger (tilt dropped, §5.5); all 14 effects; the face states; the `?lab` panel with a lip-sync strength control; the six floating buttons (three movement styles in the lab) and the pop-up panels (§4.2); the still image for browsers without WebGL and the link-preview image (`npm run face:still`); browser tests (`npm run test:e2e`, 9 passing). |
 | 2b. Head and hair | **Paused (2026-10-21).** The core features (phases 3–7) come first. The realistic head, hair and bust will be modeled in Blender later and dropped in then (§5.8). The face-mesh-only wireframe stays as an artistic option. The code-generated head, hair and realistic mode stay in the lab until the Blender model replaces them. The site shows the face only, and the head file downloads only in the lab. |
-| 3. Voice | **In progress, on the MacBook Air (2026-10-21).** You lean toward **Pocket-TTS**: it sounds very good to you and is by far the fastest. Its one weakness, jumbled tech names, is fixed with sound-it-out spellings (`services/models/pronunciations.json`). Fine-tuning is out. `services/models/speak.py` turns a sentence into your voice plus word timing and mouth shapes. Next: you confirm the spellings, then the speeds are re-measured on the Mac mini (§6.3). |
+| 3. Voice | **Voice chosen (2026-10-21): Pocket-TTS with the sound-it-out spellings** ("pocket-respelled", §6.3); the other bake-off models were deleted. `services/models/speak.py` turns a sentence into your voice plus word timing and mouth shapes, at about 0.12 of real time. Still to do: the model server, a small always-on local service the chat backend calls, then setting it up on the Mac mini and re-measuring there. |
 
 **Phase 1 details:**
 - **Captured in the app,** each file checked:
@@ -164,8 +164,8 @@ activity, and Qdrant Cloud's free plan suspends a cluster after a week unused an
      └─ postgres   visitors, strikes, transcripts, handoffs, spend, and the RAG
                    index (pgvector), all in one database
    Native macOS (outside Docker, because containers on a Mac can't use the graphics chip)
-     └─ model server (mlx-audio)
-          ├─ text-to-speech in your cloned voice
+     └─ model server (services/models)
+          ├─ text-to-speech in your cloned voice (Pocket-TTS, on the CPU; §6.3)
           ├─ forced aligner: given the text and the audio, finds when each word is spoken
           ├─ speech-to-text for the visitor's mic
           └─ embedding model: turns text into lists of numbers so similar meanings can be found
@@ -230,7 +230,7 @@ Meaning-only search can rank a passage about "event streaming" above the one tha
 | ------------------------------------------------------ | -------------------------------------------------------------- |
 | macOS and background apps                              | 4–5 GB                                                         |
 | Docker VM: api, Postgres with pgvector                       | about 1 GB                                                     |
-| Text-to-speech, cloned voice (§6.3 bake-off picks one) | about 1–2 GB                                                   |
+| Text-to-speech, cloned voice (Pocket-TTS, measured)     | about 2.7 GB                                                   |
 | Forced aligner (Qwen3-ForcedAligner-0.6B)              | about 1–1.5 GB                                                 |
 | Speech-to-text (Parakeet v3 or Whisper large-v3-turbo) | about 1.5 GB                                                   |
 | Embedding model (Qwen3-Embedding-0.6B)                 | about 0.6 GB                                                   |
@@ -769,6 +769,10 @@ rerun them; the listening page is `knowledge/voice/bakeoff/index.html`.
   what the chat needs before it can time the lips.
 - **Lip timing.** `speak.py` voiced a 14-word sentence (7.3 s of speech) in 4.7 s, then timed the
   words and mouth shapes in 0.3 s.
+
+**Decision (2026-10-21): Pocket-TTS with the sound-it-out spellings ("pocket-respelled").** The
+other bake-off models were deleted from the Mac to free 11 GB; `bakeoff/run.py` still lists them,
+so any can be downloaded again.
 
 **Pocket-TTS, after listening (2026-10-21).** You found it performs very well, and the only problem
 you heard was jumbled tech names. You also found the two Qwen variants worse than plain Qwen3-TTS
