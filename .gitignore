@@ -153,3 +153,6 @@ xcuserdata/
 .build/
 # Wrangler local dev state
 .wrangler/
+# Playwright test output
+test-results/
+playwright-report/

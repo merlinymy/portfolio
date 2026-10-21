@@ -133,6 +133,8 @@ export const control = {
   viseme: "off",
   /** Set to replay the assemble intro on the next frame. */
   replayIntro: false,
+  /** Holds the neutral scanned face with no clip, for rendering the still image (tools/face/still.ts). */
+  still: false,
   /** A point on screen (client pixels) the face looks at instead of the pointer: an open panel or a focused button. */
   attention: null as { x: number; y: number } | null,
   /** Width of a panel open on the right, in pixels; the face moves into the space beside it. */

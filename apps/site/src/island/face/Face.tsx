@@ -249,8 +249,12 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
     }
     const state = STATES[rig.state];
 
-    // 1. Base clip: every slider, the head sway and the eyes.
-    rig.blend.sample(now, pose);
+    // 1. Base clip: every slider, the head sway and the eyes. The still image keeps the neutral scan.
+    if (control.still) {
+      pose.weights.fill(0);
+      pose.head.fill(0);
+      pose.eyes.fill(0);
+    } else rig.blend.sample(now, pose);
 
     // 2–3. While speaking, the talking clip drives the upper face and lip-sync drives the mouth.
     const speaking = rig.state === "speaking";

@@ -27,6 +27,8 @@ Run from the repo root, with Node 22.22 or newer:
 | `npm run build` | Builds the static site into `apps/site/dist/` |
 | `npm run check` | Type-checks the site |
 | `npm run face` | Turns the private face capture in `knowledge/faceScan/` into the site's `apps/site/public/face/` files ([tools/face/README.md](tools/face/README.md)) |
+| `npm run face:still` | After a build, renders the still face image (for browsers without 3D) and the link-preview image with Chrome. Build again afterwards to include them. |
+| `npm run test:e2e` | Builds the site and runs the browser tests in `tests/e2e/` with the Chrome on this Mac |
 | `npx wrangler dev` | After a build, serves `apps/site/dist/` the way Cloudflare will, at http://localhost:8787 |
 
 ## The effects lab

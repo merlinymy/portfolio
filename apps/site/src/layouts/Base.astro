@@ -10,6 +10,8 @@ interface Props {
 
 const { title, description, siteName, jsonLd } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
+// The link-preview picture, rendered by tools/face/still.ts.
+const preview = new URL("/face/preview.jpg", Astro.site);
 // Escape "<" so profile text can never close the JSON-LD script tag early.
 const jsonLdText = jsonLd && JSON.stringify(jsonLd).replace(/</g, "\\u003c");
 ---
@@ -28,7 +30,11 @@ const jsonLdText = jsonLd && JSON.stringify(jsonLd).replace(/</g, "\\u003c");
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content={preview} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={`A 3D wireframe of ${siteName}'s face beside the name and headline`} />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="generator" content={Astro.generator} />
     <!-- Lets the first-screen layout for the face apply before the page draws, so it doesn't jump. -->
     <script is:inline>document.documentElement.classList.add("js");</script>

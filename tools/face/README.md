@@ -83,6 +83,16 @@ photos stay private.
 
 Run it again after any recapture. Nothing changes on the site until you do.
 
+Then refresh the two still pictures, so they show the new face:
+1. `npm run build`
+2. `npm run face:still`
+3. `npm run build` again, so the new pictures are in the site.
+
+The second step opens the built site in Chrome, holds your neutral face, and saves:
+- `still.jpg`, shown instead of the 3D face in browsers that can't draw it
+- `preview.jpg`, the 1200 × 630 picture LinkedIn, Slack and messaging apps show when someone shares
+  a link to the site
+
 ## Head and hair
 
 The iPhone only scans your face. In phase 2b the rest of your head is rebuilt in Blender from the

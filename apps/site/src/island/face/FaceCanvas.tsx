@@ -1,6 +1,12 @@
 /**
  * The 3D part of the face island, loaded only after the page's HTML is on screen (plan §5.3):
  * the canvas, the "Follow my tilt" button on iPhone, and the ?lab panel.
+ *
+ * The stage's data-face attribute says what's showing, for tests and the still-image script:
+ * "ready" once the 3D face draws, "still" when the fallback image shows instead.
+ *
+ * ?still holds the neutral face with no intro, which is how tools/face/still.ts renders the
+ * fallback and preview images.
  */
 import { Canvas } from "@react-three/fiber";
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
@@ -25,8 +31,16 @@ export default function FaceCanvas({ container, buttons }: { container: HTMLElem
   const [input, setInput] = useState<LookInput>();
   const [visible, setVisible] = useState(true);
   const [askTilt, setAskTilt] = useState(false);
+  const [failed, setFailed] = useState(false);
   const supported = useMemo(hasWebGL2, []);
-  const lab = useMemo(() => new URLSearchParams(location.search).has("lab"), []);
+  const params = useMemo(() => new URLSearchParams(location.search), []);
+  const lab = params.has("lab");
+
+  useEffect(() => {
+    if (!params.has("still")) return;
+    control.still = true;
+    settings.effects.assemble.mode = "off";
+  }, [params]);
 
   // In the lab, `face.settings` and `face.control` in the browser console reach the same values.
   useEffect(() => {
@@ -38,7 +52,10 @@ export default function FaceCanvas({ container, buttons }: { container: HTMLElem
     let live = true;
     loadFace().then(
       (face) => live && setData(face),
-      (error) => console.error("The face didn't load:", error),
+      (error) => {
+        console.error("The face didn't load:", error);
+        if (live) setFailed(true);
+      },
     );
     return () => {
       live = false;
@@ -62,11 +79,25 @@ export default function FaceCanvas({ container, buttons }: { container: HTMLElem
     setAskTilt(tiltNeedsPermission() && matchMedia("(pointer: coarse)").matches && !prefersReducedMotion());
   }, []);
 
-  if (!supported || !data || !input) return null;
+  // Without WebGL, or if the face files didn't load, a still image of the face stands in.
+  const still = !supported || failed;
+  useEffect(() => {
+    if (still) container.dataset.face = "still";
+  }, [still, container]);
+
+  if (still) return <img className="face-still" src="/face/still.jpg" alt="" />;
+  if (!data || !input) return null;
   return (
     <>
       <div className="face-canvas" aria-hidden="true">
-        <Canvas dpr={[1, 2]} frameloop={visible ? "always" : "never"} camera={{ fov: FOV, near: 0.01, far: 5 }}>
+        <Canvas
+          dpr={[1, 2]}
+          frameloop={visible ? "always" : "never"}
+          camera={{ fov: FOV, near: 0.01, far: 5 }}
+          onCreated={() => {
+            container.dataset.face = "ready";
+          }}
+        >
           <Face data={data} input={input} buttons={buttons} />
         </Canvas>
       </div>
