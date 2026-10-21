@@ -230,13 +230,14 @@ async function loadClips(): Promise<Record<ClipName, Clip>> {
   return clips;
 }
 
-export async function loadFace(): Promise<FaceData> {
+/** `withHead` also loads the head, neck and shoulders (head.glb, about 800 KB); the face works without them. */
+export async function loadFace(withHead: boolean): Promise<FaceData> {
   const [mesh, clips, gaze, visemes, head] = await Promise.all([
     loadMesh(),
     loadClips(),
     fetchOk(`${BASE}gaze.json`).then((r) => r.json()),
     fetchOk(`${BASE}visemes.json`).then((r) => r.json()),
-    loadHead(),
+    withHead ? loadHead() : undefined,
   ]);
   if (gaze.names.join() !== mesh.names.join() || visemes.names.join() !== mesh.names.join()) {
     throw new Error("gaze.json or visemes.json lists the sliders in a different order from face.glb");

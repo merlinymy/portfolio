@@ -49,7 +49,8 @@ export default function FaceCanvas({ container, buttons }: { container: HTMLElem
   useEffect(() => {
     if (!supported) return;
     let live = true;
-    loadFace().then(
+    // The lab always loads the head, so its show switch can turn it on.
+    loadFace(lab || settings.head.show).then(
       (face) => live && setData(face),
       (error) => {
         console.error("The face didn't load:", error);
@@ -59,7 +60,7 @@ export default function FaceCanvas({ container, buttons }: { container: HTMLElem
     return () => {
       live = false;
     };
-  }, [supported]);
+  }, [supported, lab]);
 
   useEffect(() => {
     const look = new LookInput(container);

@@ -10,7 +10,8 @@ Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answe
 | 0b. Domain | Done: merlinyang.com's DNS is on Cloudflare (registration stays at Namecheap), and the current Vercel site still loads. There was no email forwarding to recreate. The tunnel hostname comes in phase 5. |
 | 1. Capture | Done. Hair photos dropped: the hair comes from a free model, and the head is rebuilt from your scan and the three face photos (§5.1). See below. |
 | 2a. Moving face | Done. Built: the converter (`npm run face`); the 3D face with clips, eyes following the pointer or a finger (tilt dropped, §5.5); all 14 effects; the face states; the `?lab` panel with a lip-sync strength control; the six floating buttons (three movement styles in the lab) and the pop-up panels (§4.2); the still image for browsers without WebGL and the link-preview image (`npm run face:still`); browser tests (`npm run test:e2e`, 9 passing). |
-| 2b. Head and hair | **Next session: a proper 3D model in Blender** for the realistic version (head, hair and bust), built from your scan and the three photos (decided 2026-10-21, §5.8). The face-mesh-only wireframe stays as an artistic option. The code-generated head, hair and realistic mode stay in the lab until the Blender model replaces them. Then phase 3. |
+| 2b. Head and hair | **Paused (2026-10-21).** The core features (phases 3–7) come first. The realistic head, hair and bust will be modeled in Blender later and dropped in then (§5.8). The face-mesh-only wireframe stays as an artistic option. The code-generated head, hair and realistic mode stay in the lab until the Blender model replaces them. The site shows the face only, and the head file downloads only in the lab. |
+| 3. Voice | **Started 2026-10-21** on the MacBook Air: the voice bake-off (§6.3). |
 
 **Phase 1 details:**
 - **Captured in the app,** each file checked:
@@ -34,7 +35,7 @@ Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answe
   move into an arc above it. Panels open as a sheet on the right on screens 900 px and wider (the
   face slides left and glances toward it) and fill the screen below that.
 - **Checked on your iPhone (2026-10-21):** a finger dragged across the face steers it, and the
-  panels feel right. Still to check: reduced motion turned on.
+  panels feel right, and the face behaves well with reduced motion turned on.
 - **Defaults you set from the lab (2026-10-21):** recorded head sway 0.15; buttons in the still
   ring style, distance 1.11, speed 1, bob 0.8.
 - **Download size.** The 3D code is 260 KB compressed, mostly three.js and React Three Fiber, and
@@ -607,7 +608,7 @@ opens in Blender):
 - **Why.** The code-generated head, hair and bust, and the photo-textured realistic mode built on
   them, showed that a convincing realistic version (head, hair and bust) needs a properly modeled
   3D model. Generated shapes and strands only approximate it.
-- **Next session, in Blender** (5.0.1 is installed):
+- **Later, in Blender** (5.0.1 is installed), after the core features (paused 2026-10-21):
   - Model the head, hair and bust as a proper 3D model, around the scanned face.
   - Inputs to use as reference:
     - `face.glb`: the scan, with its UVs and point colors.
@@ -705,6 +706,25 @@ Score each model on four things:
 
 Avoid F5-TTS, XTTS-v2 and Higgs Audio: their licenses forbid commercial use, and job hunting is a
 grey area under those terms.
+
+**If no model is fast enough on the Mac mini (your fallback, 2026-10-21):** every answer is
+written, approved and voiced ahead of time, and the chat never writes or voices anything new.
+- **An answer library.** Each approved answer has its audio and mouth timing made in advance.
+  Speed doesn't matter for that, so the best-sounding model wins, even a slow one.
+- **Typed messages are matched, not answered.** A message is matched to the closest answer in the
+  library by meaning, using the embedding search, and the strike check's AI call (which already
+  reads every message) confirms the match.
+- **No match.** A fixed, pre-voiced line says the question isn't covered yet and offers the
+  handoff to the real you.
+- **Trade-off.** Answers can't combine facts or follow up on details, but nothing unchecked is
+  ever said, and there is no AI writing cost.
+- **What this changes in the bake-off.** Sound comes first. Speed only decides whether live
+  answers are possible.
+
+**Bake-off on the MacBook Air first.** The Air has the same M4 chip as the Mac mini, so it shows how
+each model sounds and roughly how fast it is. It has no fan and slows down under long loads, and its
+24 GB of memory is more than the mini's 16 GB. So the speeds are re-measured on the mini before
+anything is decided on speed.
 
 ---
 

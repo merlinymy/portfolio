@@ -33,7 +33,7 @@
     "bob": 0.8
   },
   "head": {
-    "show": true,
+    "show": false,
     "width": 1,
     "height": 1,
     "depth": 1,
@@ -41,7 +41,7 @@
     "lineOpacity": 0.18
   },
   "hair": {
-    "show": true,
+    "show": false,
     "style": "loose",
     "count": 1200,
     "length": 0.12,
