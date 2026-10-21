@@ -137,3 +137,9 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Private career source material (personal details, comp notes). Never commit: repo is public.
+profile/
+.DS_Store
+# Private chat knowledge: approved answers, prompts. Never commit: repo is public.
+knowledge/
