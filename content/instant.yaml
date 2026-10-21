@@ -1,0 +1,68 @@
+# The six instant answers (plan §7.11). Public: voiced into static audio and shown in the About
+# panel. Reviewed drafts live in knowledge/answers.draft.md; keep the two in step.
+- id: about-you
+  order: 1
+  question: Tell me about yourself.
+  alsoAskedAs: [introduce yourself, who are you, walk me through your background, elevator pitch]
+  answer: >-
+    I'm Merlin. I build AI tools for experts outside tech, from the data pipeline to the interface
+    they use, and I care most about whether the answers are actually right. I started in geology at
+    UC Santa Cruz and got hooked on code analyzing seismic data. After a master's in analytics and a
+    software job at a startup, I'm now finishing a master's in computer science at Northeastern,
+    graduating January 2028. My proudest work is a research assistant for a postdoctoral
+    biochemistry researcher. It helped him write a grant proposal that won half a million dollars.
+- id: role
+  order: 2
+  question: What kind of role are you looking for?
+  alsoAskedAs: [what are you looking for, internship or full-time, ideal role, what kind of job]
+  answer: >-
+    I'm looking for an internship, co-op, or full-time role building AI tools with experts in fields
+    outside software. That could be AI engineering, full-stack work on an AI product, or a forward
+    deployed role, where I sit with the people using the tool and build what they actually need. I
+    also want to learn to design and harden agent workflows on a real team. Internships work for me
+    in any season, and I'm available full-time after I graduate in January 2028, and open to
+    discussing an earlier start.
+- id: proudest-project
+  order: 3
+  question: What project are you most proud of?
+  alsoAskedAs: [best project, walk me through a project, most impressive work, biggest accomplishment]
+  answer: >-
+    A research assistant I built for a postdoctoral biochemistry researcher. He has about 10,000
+    papers, so I built a system that answers his questions from his own library and attaches a
+    citation to every number. Getting the data out was the hard part. Many of his papers are old
+    scans with the key data in figures, so I chose a slower AI-based extraction over the fast tools
+    that got them wrong. He uses it once or twice a week when he's writing, and it helped him write a
+    grant proposal that won half a million dollars.
+- id: tech-stack
+  order: 4
+  question: What's your strongest tech stack?
+  alsoAskedAs: [tech stack, languages and frameworks, technical skills, frontend or backend]
+  answer: >-
+    Python and TypeScript. On the back end, mostly FastAPI, and Node with Express. On the front end,
+    React. For data, Postgres and SQLite, plus Qdrant for vector search. My real focus is the AI
+    layer: retrieval, embeddings and reranking, and testing whether the answers are actually right,
+    mostly with Claude and OpenAI. I ship with Docker and self-host on a Mac mini behind Cloudflare
+    Tunnel. And I build with a team of AI coding agents. I'm the architect and lead: I design the
+    system, set the guardrails, and spend my effort proving it works.
+- id: working-on
+  order: 5
+  question: What are you working on right now?
+  alsoAskedAs: [what are you building, current projects, what have you been up to]
+  answer: >-
+    Three things. First, the next version of my research assistant. The researcher keeps sending
+    feature requests, like quoting the exact passage behind every citation and remembering context
+    between sessions. Second, my graduate capstone: I lead a team of three building a pipeline that
+    pulls data out of polymer research papers for scientists at Oak Ridge National Laboratory, where
+    accuracy is the whole job. And third, this site. You're looking at it: my face, scanned on my
+    iPhone, and a chat that only answers from what I've written.
+- id: different
+  order: 6
+  question: What makes you different?
+  alsoAskedAs: [why should we hire you, what sets you apart, your superpower, your edge]
+  answer: >-
+    I check my own work, and I go wide. When the researcher told me some citations were wrong, I
+    didn't guess. I counted what was in the search index, found that 44 percent of it was fake
+    caption chunks and there were zero tables, then fixed both and proved the fix on real papers. And
+    I've gone from geology to code to building tools for a biochemistry researcher and now polymer
+    scientists. AI is getting very good at going deep. I think the value is in people who know enough
+    about a field to guide it and catch it when it's wrong.

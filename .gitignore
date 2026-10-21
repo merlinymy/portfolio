@@ -143,3 +143,5 @@ profile/
 .DS_Store
 # Private chat knowledge: approved answers, prompts. Never commit: repo is public.
 knowledge/
+# Vite dependency cache
+.vite/

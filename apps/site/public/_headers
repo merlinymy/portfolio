@@ -1,0 +1,7 @@
+# Cloudflare Pages response headers. Without these, the AI-crawler files may be served without a
+# UTF-8 charset and "Résumé" arrives garbled.
+/profile.md
+  Content-Type: text/markdown; charset=utf-8
+
+/llms.txt
+  Content-Type: text/plain; charset=utf-8

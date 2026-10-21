@@ -1,0 +1,38 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description: string;
+  siteName: string;
+  jsonLd?: object;
+}
+
+const { title, description, siteName, jsonLd } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+// Escape "<" so profile text can never close the JSON-LD script tag early.
+const jsonLdText = jsonLd && JSON.stringify(jsonLd).replace(/</g, "\\u003c");
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta property="og:type" content="profile" />
+    <meta property="og:site_name" content={siteName} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="generator" content={Astro.generator} />
+    {jsonLdText && <script is:inline type="application/ld+json" set:html={jsonLdText} />}
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

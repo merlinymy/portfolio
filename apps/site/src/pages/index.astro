@@ -1,0 +1,158 @@
+---
+import { render } from "astro:content";
+import Panel from "../components/Panel.astro";
+import FaceStage from "../island/FaceStage";
+import Base from "../layouts/Base.astro";
+import { PANELS } from "../lib/panels";
+import {
+  getAbout,
+  getEarlierProjects,
+  getExperience,
+  getInstantAnswers,
+  getProjects,
+  getSkills,
+  personJsonLd,
+} from "../lib/profile";
+
+const [about, experience, projects, earlierProjects, skills, instant] = await Promise.all([
+  getAbout(),
+  getExperience(),
+  getProjects(),
+  getEarlierProjects(),
+  getSkills(),
+  getInstantAnswers(),
+]);
+const { Content: AboutText } = await render(about);
+const jobs = await Promise.all(
+  experience.map(async (job) => ({ job, Content: (await render(job)).Content })),
+);
+const projectList = await Promise.all(
+  projects.map(async (project) => ({ project, Content: (await render(project)).Content })),
+);
+
+const me = about.data;
+const [currentProgram] = me.education;
+const formatEducation = (e: (typeof me.education)[number]) =>
+  `${e.degree}, ${e.school} (${e.date}${e.note ? `; ${e.note}` : ""})`;
+---
+
+<Base
+  title={`${me.name} · ${me.headline}`}
+  description={me.summary}
+  siteName={me.name}
+  jsonLd={personJsonLd(about, skills, Astro.site!)}
+>
+  <header class="hero">
+    <h1>{me.name}</h1>
+    <p class="headline">{me.headline}</p>
+    <p class="tagline">{me.tagline}</p>
+  </header>
+
+  <FaceStage client:idle />
+
+  <nav class="profile-nav" aria-label="Profile">
+    <ul>
+      {PANELS.map((panel) => <li><a href={`#${panel.id}`}>{panel.label}</a></li>)}
+    </ul>
+  </nav>
+
+  <main>
+    <Panel id="about" title="About">
+      <p class="lead">{me.summary}</p>
+      <AboutText />
+      <dl class="facts">
+        <dt>Based in</dt>
+        <dd>{me.location}</dd>
+        <dt>Work authorization</dt>
+        <dd>{me.workAuthorization}</dd>
+        {currentProgram && (
+          <>
+            <dt>Studying</dt>
+            <dd>{formatEducation(currentProgram)}</dd>
+          </>
+        )}
+      </dl>
+      <h3>Common questions</h3>
+      {instant.map(({ data }) => (
+        <div class="qa">
+          <h4>{data.question}</h4>
+          <p>{data.answer}</p>
+        </div>
+      ))}
+    </Panel>
+
+    <Panel id="experience" title="Experience">
+      {jobs.map(({ job, Content }) => (
+        <article class="entry">
+          <h3>{job.data.role} · {job.data.company}</h3>
+          <p class="meta">{[job.data.dates, job.data.location].filter(Boolean).join(" · ")}</p>
+          {job.data.about && <p>{job.data.about}</p>}
+          <Content />
+        </article>
+      ))}
+    </Panel>
+
+    <Panel id="projects" title="Projects">
+      {projectList.map(({ project, Content }) => (
+        <article class="entry">
+          <h3>{project.data.name}</h3>
+          <p class="meta">{project.data.dates} · {project.data.tech.join(", ")}</p>
+          <p>{project.data.blurb}</p>
+          <Content />
+          {project.data.links.length > 0 && (
+            <p class="links">{project.data.links.map((l) => <a href={l.url}>{l.label}</a>)}</p>
+          )}
+        </article>
+      ))}
+      <h3>Earlier frontend projects</h3>
+      <ul class="earlier">
+        {earlierProjects.map(({ data }) => (
+          <li>
+            <strong>{data.name}</strong>: {data.desc}{" "}
+            <span class="meta">({data.tech.join(", ")})</span>
+            <span class="links">{data.links.map((l) => <a href={l.url}>{l.label}</a>)}</span>
+          </li>
+        ))}
+      </ul>
+    </Panel>
+
+    <Panel id="skills" title="Skills">
+      <dl class="skills">
+        {skills.map(({ data }) => (
+          <>
+            <dt>{data.group}</dt>
+            <dd>{data.items.join(", ")}</dd>
+          </>
+        ))}
+      </dl>
+    </Panel>
+
+    <Panel id="resume" title="Résumé">
+      <p><a href={me.resumePdf}>Download my résumé (PDF)</a></p>
+      <h3>Education</h3>
+      <ul>
+        {me.education.map((e) => <li>{formatEducation(e)}</li>)}
+      </ul>
+      {me.credentials.length > 0 && (
+        <>
+          <h3>Presentations</h3>
+          <ul>
+            {me.credentials.map((c) => <li>{c}</li>)}
+          </ul>
+        </>
+      )}
+    </Panel>
+
+    <Panel id="contact" title="Contact">
+      <ul class="contact">
+        <li>Email: <a href={`mailto:${me.contact.email}`}>{me.contact.email}</a></li>
+        <li><a href={me.contact.linkedin}>LinkedIn</a></li>
+        <li><a href={me.contact.github}>GitHub</a></li>
+      </ul>
+    </Panel>
+  </main>
+
+  <footer>
+    <p>© {new Date().getFullYear()} {me.name}</p>
+  </footer>
+</Base>

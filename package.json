@@ -1,19 +1,18 @@
 {
-  "name": "portfolio_prototype",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "vite",
-    "build": "vite build"
+  "name": "portfolio",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.22.0"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "tech-stack-icons": "^3.3.2",
-    "three": "^0.180.0",
-    "vite": "^7.1.6"
+  "scripts": {
+    "dev": "npm run dev -w @portfolio/site",
+    "build": "npm run build -w @portfolio/site",
+    "preview": "npm run preview -w @portfolio/site",
+    "check": "npm run check -w @portfolio/site"
   }
 }

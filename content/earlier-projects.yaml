@@ -1,0 +1,57 @@
+# Earlier frontend projects, carried over from the old site's project list.
+- id: tcg-memory-league
+  order: 1
+  name: Pokémon TCG Memory League
+  desc: A collectible twist on the classic memory game, with Pokémon TCG cards and progressive challenges.
+  tech: [React, Tailwind CSS, Howler.js, Vite]
+  links:
+    - { label: Live, url: "https://tcgmemoryleague.merlinyang.com/" }
+    - { label: Code, url: "https://github.com/merlinymy/tcg-memo-collector" }
+- id: ats-resume-builder
+  order: 2
+  name: ATS-friendly resume builder
+  desc: A printable, ATS-safe resume builder.
+  tech: [React, Tailwind CSS]
+  links:
+    - { label: Live, url: "https://atsresume.merlinyang.com/" }
+    - { label: Code, url: "https://github.com/merlinymy/cv-builder" }
+- id: layered-triangle-sphere
+  order: 3
+  name: Interactive 3D sphere
+  desc: A layered triangle that turns into a sphere, blending geometry, animation, and interaction in the browser.
+  tech: [Three.js]
+  links:
+    - { label: Live, url: "https://layered-triangle-sphere.vercel.app/" }
+    - { label: Code, url: "https://github.com/merlinymy/layered-triangle-sphere" }
+- id: binary-tree-visualizer
+  order: 4
+  name: Binary tree visualizer
+  desc: A retro-styled browser app to visualize, edit, and explore binary search trees in real time.
+  tech: [JavaScript, CSS, HTML]
+  links:
+    - { label: Live, url: "https://merlinymy.github.io/binary-search-tree-visualizer/" }
+    - { label: Code, url: "https://github.com/merlinymy/binary-search-tree-visualizer" }
+- id: bubble-bar
+  order: 5
+  name: Bubble Bar restaurant page
+  desc: A fictional restaurant site with a Star Trek-inspired menu and a bubble animation drawn on an HTML canvas.
+  tech: [JavaScript, CSS, HTML, Canvas]
+  links:
+    - { label: Live, url: "https://merlinymy.github.io/bubbleBar/" }
+    - { label: Code, url: "https://github.com/merlinymy/bubbleBar" }
+- id: weather-app
+  order: 6
+  name: iOS-style weather app
+  desc: A web replica of Apple's Weather app, focused on a clean, responsive iOS-style interface.
+  tech: [JavaScript, CSS, HTML]
+  links:
+    - { label: Live, url: "https://merlinymy.github.io/apple-weather-app-replica/" }
+    - { label: Code, url: "https://github.com/merlinymy/apple-weather-app-replica" }
+- id: reminders-app
+  order: 7
+  name: iOS-style reminders app
+  desc: A lightweight reminders app built with plain JavaScript, CSS, and HTML, no frameworks or libraries.
+  tech: [JavaScript, CSS, HTML]
+  links:
+    - { label: Live, url: "https://merlinymy.github.io/ios-reminder-copy/" }
+    - { label: Code, url: "https://github.com/merlinymy/ios-reminder-copy" }

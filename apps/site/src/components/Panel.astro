@@ -1,0 +1,17 @@
+---
+/**
+ * One profile panel. Plain HTML so crawlers and no-JS visitors can read it; the island turns it
+ * into a pop-up in phase 2 (plan §4.2).
+ */
+interface Props {
+  id: string;
+  title: string;
+}
+
+const { id, title } = Astro.props;
+---
+
+<section id={id} class="panel" aria-labelledby={`${id}-title`}>
+  <h2 id={`${id}-title`}>{title}</h2>
+  <slot />
+</section>

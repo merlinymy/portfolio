@@ -1,0 +1,37 @@
+# Mirrors skills_master in profile/resume_library.yaml. Never add a skill that isn't there.
+- id: languages
+  order: 1
+  group: Languages
+  items: [Python, TypeScript, JavaScript, SQL, Bash]
+- id: backend
+  order: 2
+  group: Backend & APIs
+  items: [FastAPI, Express, Node.js, REST design, Pydantic, OAuth 2.0, JWT / row-level security]
+- id: frontend
+  order: 3
+  group: Frontend
+  items: [React, Angular, TypeScript, Tailwind CSS, Vite, TanStack Query]
+- id: data
+  order: 4
+  group: Data & Storage
+  items: [PostgreSQL, Oracle, SQLite, MongoDB, Supabase, Qdrant (vector search), pandas]
+- id: ai
+  order: 5
+  group: AI / LLM
+  items:
+    - OpenAI
+    - Anthropic (Claude)
+    - Gemini APIs
+    - RAG
+    - Embeddings & reranking (Voyage, Cohere)
+    - Prompt engineering
+    - LLM-as-judge evaluation
+    - Claude Code agent workflows (skills, hooks, guardrails)
+- id: infra
+  order: 6
+  group: Infra & Tooling
+  items: [Docker & Compose, AWS EC2, nginx, Vercel, Railway, Cloudflare Tunnel, launchd, Git]
+- id: ml
+  order: 7
+  group: ML / Scientific
+  items: [PyTorch, JAX, AlphaFold, RFdiffusion, ProteinMPNN]

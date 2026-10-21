@@ -1,0 +1,6 @@
+# Every crawler is welcome, AI crawlers included (plan §4.3). The chat API isn't a page.
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://merlinyang.com/sitemap-index.xml
