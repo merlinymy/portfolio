@@ -6,6 +6,7 @@
  * settings.json; the lab's "Export settings" button copies a replacement for that file.
  */
 import type { ClipName } from "./data";
+import type { HairSettings } from "./hair";
 import defaults from "./settings.json";
 
 export const EFFECTS = {
@@ -23,6 +24,7 @@ export const EFFECTS = {
   twinkle: "Twinkle",
   assemble: "Assemble intro",
   stateColor: "State color",
+  photoColor: "Photo color",
 } as const;
 export type EffectName = keyof typeof EFFECTS;
 
@@ -82,6 +84,31 @@ export interface Settings {
     eyeSize: number;
     eyeGlow: number;
     baseColor: string;
+    /** The area kept in view, in meters: it fits both the width and the height. */
+    frameWidth: number;
+    frameHeight: number;
+    /** The height in face space the view centers on (the eyes are at about +0.03 m). */
+    frameCenterY: number;
+    /** Hide what's behind the face and head, instead of seeing through them. */
+    occlude: boolean;
+  };
+  /** The fitted head, neck and shoulders (plan §5.8). */
+  head: {
+    show: boolean;
+    /** Corrections to the size measured from the photo, above the ears and behind the face. */
+    width: number;
+    height: number;
+    depth: number;
+    pointOpacity: number;
+    lineOpacity: number;
+  };
+  hair: HairSettings & {
+    show: boolean;
+    /** How far the ends sway in the wind. */
+    sway: number;
+    /** How much the ends trail behind when the head turns. */
+    lag: number;
+    opacity: number;
   };
   motion: {
     /** Degrees the face would turn for a pointer at the edge of the window. */

@@ -3,7 +3,8 @@
  * apps/site/public/face/ (plan §5.2). Run `npm run face` from the repo root after replacing a
  * capture; the file formats on both sides are in tools/face/README.md.
  *
- *   face.json     → face.glb      the mesh, its 52 expression offsets and the line edges
+ *   face.json     → face.glb      the mesh, its 52 expression offsets, the line edges and each
+ *                                 point's color from the texture photos (the photos stay private)
  *   <clip>.json   → clips.bin     all five clips, quantized and packed
  *   visemes.json  → visemes.json  copied as is
  *   gaze.json     → gaze.json     copied as is
@@ -12,6 +13,7 @@ import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Accessor, Document, NodeIO, Primitive, VertexLayout } from "@gltf-transform/core";
+import jpeg from "jpeg-js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const SOURCE = join(ROOT, "knowledge/faceScan");
@@ -73,6 +75,67 @@ function uniqueEdges(triangles: number[]): Uint16Array {
   return new Uint16Array(edges);
 }
 
+interface TextureShot {
+  name: string;
+  image: string;
+  cameraInFace: number[];
+  pixels: number[];
+}
+
+/**
+ * Each point's color in the texture photos, as linear RGB. A point takes its color mostly from
+ * the photo that faced it most squarely, so the left and right photos fill in the sides of the
+ * face that the front photo sees at a slant.
+ */
+async function sampleColors(face: FaceMesh): Promise<Float32Array | undefined> {
+  let shots: TextureShot[];
+  try {
+    shots = (await readJson<{ shots: TextureShot[] }>("texture.json")).shots;
+  } catch {
+    return undefined;
+  }
+  const photos = await Promise.all(shots.map(async (s) => jpeg.decode(await readFile(join(SOURCE, s.image)), { useTArray: true })));
+  const count = face.vertices.length / 3;
+  const v = face.vertices;
+  // Area-weighted normals from the triangles.
+  const normals = new Float32Array(count * 3);
+  for (let t = 0; t < face.triangles.length; t += 3) {
+    const [a, b, c] = [face.triangles[t], face.triangles[t + 1], face.triangles[t + 2]];
+    const e1 = [v[b * 3] - v[a * 3], v[b * 3 + 1] - v[a * 3 + 1], v[b * 3 + 2] - v[a * 3 + 2]];
+    const e2 = [v[c * 3] - v[a * 3], v[c * 3 + 1] - v[a * 3 + 1], v[c * 3 + 2] - v[a * 3 + 2]];
+    const n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+    for (const i of [a, b, c]) for (let k = 0; k < 3; k++) normals[i * 3 + k] += n[k];
+  }
+  // The photos are sRGB; glTF vertex colors are linear.
+  const linear = (byte: number) => {
+    const c = byte / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const colors = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const n = [normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]];
+    const nl = Math.hypot(n[0], n[1], n[2]) || 1;
+    // Mesh triangles wind so the normals point out of the face, toward the camera.
+    let total = 0;
+    const sum = [0, 0, 0];
+    shots.forEach((shot, s) => {
+      const toCamera = [shot.cameraInFace[0] - v[i * 3], shot.cameraInFace[1] - v[i * 3 + 1], shot.cameraInFace[2] - v[i * 3 + 2]];
+      const dl = Math.hypot(toCamera[0], toCamera[1], toCamera[2]) || 1;
+      const facing = (n[0] * toCamera[0] + n[1] * toCamera[1] + n[2] * toCamera[2]) / (nl * dl);
+      if (facing <= 0.15) return;
+      const photo = photos[s];
+      const x = Math.min(photo.width - 1, Math.max(0, Math.round(shot.pixels[i * 2])));
+      const y = Math.min(photo.height - 1, Math.max(0, Math.round(shot.pixels[i * 2 + 1])));
+      const k = (y * photo.width + x) * 4;
+      const w = facing ** 4;
+      total += w;
+      for (let c = 0; c < 3; c++) sum[c] += w * linear(photo.data[k + c]);
+    });
+    for (let c = 0; c < 3; c++) colors[i * 3 + c] = total > 0 ? sum[c] / total : 0.2;
+  }
+  return colors;
+}
+
 async function buildGlb(face: FaceMesh, names: string[]): Promise<{ bytes: Uint8Array; edges: number }> {
   const vertexCount = face.vertices.length / 3;
   check(Number.isInteger(vertexCount), "face.json: vertices isn't a list of x, y, z triples");
@@ -87,6 +150,8 @@ async function buildGlb(face: FaceMesh, names: string[]): Promise<{ bytes: Uint8
 
   const position = accessor(Accessor.Type.VEC3, new Float32Array(face.vertices));
   const uv = accessor(Accessor.Type.VEC2, new Float32Array(face.uvs));
+  const sampled = await sampleColors(face);
+  const color = sampled && accessor(Accessor.Type.VEC3, sampled);
   const edges = uniqueEdges(face.triangles);
 
   // One morph target per slider, in the clips' slider order. Most vertices don't move for a given
@@ -116,6 +181,10 @@ async function buildGlb(face: FaceMesh, names: string[]): Promise<{ bytes: Uint8
   for (const target of targets) {
     triangles.addTarget(target);
     lines.addTarget(target);
+  }
+  if (color) {
+    triangles.setAttribute("COLOR_0", color);
+    lines.setAttribute("COLOR_0", color);
   }
 
   const mesh = doc

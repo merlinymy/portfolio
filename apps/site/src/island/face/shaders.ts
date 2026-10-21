@@ -3,7 +3,7 @@
  * expression-mixed positions the CPU uploads each frame. Points, lines and eye rings share one
  * vertex shader and one set of uniforms, so they always move together.
  */
-import { AdditiveBlending, Color, ShaderMaterial, Vector3, Vector4 } from "three";
+import { AdditiveBlending, Color, Matrix4, ShaderMaterial, Vector2, Vector3, Vector4 } from "three";
 
 export function createUniforms() {
   return {
@@ -40,12 +40,18 @@ export function createUniforms() {
     uTwinkleSpeed: { value: 1 },
     /** 0 while the points are scattered, 1 once the face has assembled. */
     uAssemble: { value: 1 },
+    /** The head's turn about the top of the neck, applied by each point's aHeadWeight. */
+    uHead: { value: new Matrix4() },
+    uPivot: { value: new Vector3() },
+    /** How far the hair's ends trail the head's turn: pitch (x) and yaw (y), in radians. */
+    uLag: { value: new Vector2() },
+    uHairSway: { value: 0 },
   };
 }
 export type FaceUniforms = ReturnType<typeof createUniforms>;
 
 const vertexShader = /* glsl */ `
-uniform float uTime, uScale, uSize, uBrightness, uOpacity, uSizeScale, uGain;
+uniform float uTime, uScale, uSize, uBrightness, uOpacity, uSizeScale, uGain, uPhoto;
 uniform vec3 uColor, uGlitchColor;
 uniform float uWind, uWindSpeed;
 uniform vec4 uRipples[3];
@@ -62,10 +68,19 @@ uniform float uDepth;
 uniform float uShimmer, uShimmerSpeed;
 uniform float uTwinkle, uTwinkleSpeed;
 uniform float uAssemble;
+uniform mat4 uHead;
+uniform vec3 uPivot;
+uniform vec2 uLag;
+uniform float uHairSway;
 
 attribute float aSeed;     // random 0-1 per vertex
 attribute vec3 aScatter;   // random offset, for dust and the intro
 attribute float aFade;     // 1, or less for eye rings behind a closing eyelid
+attribute float aHeadWeight; // 1 turns fully with the head; 0 for the shoulders
+attribute vec3 aColor;     // the photo's color at this point (plan §5.8)
+#ifdef HAIR
+attribute float aAlong;    // 0 at a strand's root, 1 at its end
+#endif
 
 varying vec3 vColor;
 varying float vAlpha;
@@ -168,7 +183,21 @@ void main() {
 #endif
   }
 
-  vColor = mix(uColor, uGlitchColor, red) * uBrightness * uGain * breath * (1.0 + glow);
+#ifdef HAIR
+  // Ends trail the head's turn a moment (a small rotation about the neck) and sway in the wind.
+  float k = aAlong * aAlong;
+  vec3 r = p - uPivot;
+  r += k * vec3(uLag.y * r.z, -uLag.x * r.z, -uLag.y * r.x + uLag.x * r.y);
+  p = uPivot + r;
+  p += k * uHairSway * 0.006 * vec3(
+    sin(t * 1.3 + aSeed * 6.283 + position.y * 20.0),
+    0.3 * sin(t * 0.9 + aSeed * 3.1),
+    0.6 * sin(t * 1.1 + aSeed * 4.2)
+  );
+#endif
+  p = mix(p, (uHead * vec4(p, 1.0)).xyz, aHeadWeight);
+
+  vColor = mix(mix(uColor, aColor, uPhoto), uGlitchColor, red) * uBrightness * uGain * breath * (1.0 + glow);
   vAlpha = alpha * uOpacity;
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   gl_Position = projectionMatrix * mv;
@@ -197,15 +226,41 @@ void main() {
 `;
 
 /**
- * A material for points or lines. Each gets its own opacity, size and brightness (so the eye rings
- * can stand out); every other uniform is shared.
+ * An invisible copy of the face and head surface, drawn first, that hides points, lines and hair
+ * behind it (a bun at the back shouldn't show through the forehead). It runs the same vertex
+ * shader, so it moves with every expression, turn and effect. Its depth is pushed back slightly so
+ * the points and lines on the surface itself stay visible.
  */
-export function createMaterial(uniforms: FaceUniforms, kind: "points" | "lines", opacity: number) {
+export function createOccluder(uniforms: FaceUniforms) {
   return new ShaderMaterial({
-    uniforms: { ...uniforms, uOpacity: { value: opacity }, uSizeScale: { value: 1 }, uGain: { value: 1 } },
+    uniforms: { ...uniforms, uOpacity: { value: 1 }, uSizeScale: { value: 1 }, uGain: { value: 1 }, uPhoto: { value: 0 } },
+    vertexShader,
+    fragmentShader: "void main() { gl_FragColor = vec4(0.0); }",
+    colorWrite: false,
+    depthWrite: true,
+    polygonOffset: true,
+    polygonOffsetFactor: 2,
+    polygonOffsetUnits: 4,
+  });
+}
+
+/**
+ * A material for points, lines or hair strands. Each gets its own opacity, size, brightness (so
+ * the eye rings can stand out) and photo-color blend; every other uniform is shared.
+ */
+export function createMaterial(uniforms: FaceUniforms, kind: "points" | "lines" | "hair", opacity: number) {
+  const defines = { points: { POINTS: "" }, lines: { LINES: "" }, hair: { LINES: "", HAIR: "" } }[kind];
+  return new ShaderMaterial({
+    uniforms: {
+      ...uniforms,
+      uOpacity: { value: opacity },
+      uSizeScale: { value: 1 },
+      uGain: { value: 1 },
+      uPhoto: { value: 0 },
+    },
     vertexShader,
     fragmentShader: kind === "points" ? pointFragment : lineFragment,
-    defines: kind === "points" ? { POINTS: "" } : { LINES: "" },
+    defines,
     transparent: true,
     depthWrite: false,
     blending: AdditiveBlending,

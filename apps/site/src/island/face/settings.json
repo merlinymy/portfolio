@@ -6,11 +6,15 @@
     "eyeOpacity": 1,
     "eyeSize": 1.5,
     "eyeGlow": 1.6,
-    "baseColor": "#9cc9ff"
+    "baseColor": "#9cc9ff",
+    "frameWidth": 0.3,
+    "frameHeight": 0.4,
+    "frameCenterY": -0.03,
+    "occlude": true
   },
   "motion": {
     "reach": 40,
-    "headYaw": 25,
+    "headYaw": 35,
     "headPitch": 15,
     "headShare": 0.55,
     "headSmoothing": 0.22,
@@ -23,6 +27,27 @@
     "spread": 1.11,
     "speed": 1,
     "bob": 0.8
+  },
+  "head": {
+    "show": true,
+    "width": 1,
+    "height": 1,
+    "depth": 1,
+    "pointOpacity": 0.45,
+    "lineOpacity": 0.1
+  },
+  "hair": {
+    "show": true,
+    "style": "loose",
+    "count": 1200,
+    "length": 0.12,
+    "part": 0,
+    "bunHeight": 0.45,
+    "bunSize": 0.07,
+    "clump": 0.4,
+    "sway": 1,
+    "lag": 1,
+    "opacity": 0.16
   },
   "states": {
     "sleeping": { "color": "#6f8fd6", "brightness": 0.55 },
@@ -48,6 +73,7 @@
     "shimmer": { "mode": "off", "strength": 1, "speed": 1 },
     "twinkle": { "mode": "off", "strength": 1, "speed": 1 },
     "assemble": { "mode": "auto", "strength": 1, "speed": 1 },
-    "stateColor": { "mode": "auto", "strength": 1, "speed": 1 }
+    "stateColor": { "mode": "auto", "strength": 1, "speed": 1 },
+    "photoColor": { "mode": "off", "strength": 1, "speed": 1 }
   }
 }

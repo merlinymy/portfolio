@@ -93,11 +93,30 @@ The second step opens the built site in Chrome, holds your neutral face, and sav
 - `preview.jpg`, the 1200 × 630 picture LinkedIn, Slack and messaging apps show when someone shares
   a link to the site
 
-## Head and hair
+## Head, neck, shoulders and hair
 
-The iPhone only scans your face. In phase 2b the rest of your head is rebuilt in Blender from the
-scan and the three texture photos, and the hair comes from a free 3D model, so no extra photos are
-needed. See plan §5.1.
+The iPhone only scans your face. A script builds the rest around it (plan §5.8), so no extra
+photos are needed:
+
+```
+npm run head
+```
+
+What it does:
+- **Downloads and checks the base.** The first run downloads MakeHuman's base human. It's CC0
+  (free for any use, no credit needed). The script pins the exact file and checks it, so every
+  rebuild starts from the same base.
+- **Fits it to your scan.** It lines the base up with your eyes and nose, and reshapes its face onto
+  your scan so the edges meet. Then it cuts the base's face away: your scanned face is never
+  changed.
+- **Sizes it from your front photo.** It measures the head's width and top where your dark hair
+  meets the lighter wall, and prints what it measured.
+- **Writes `apps/site/public/face/head.glb`.** Commit it with the face files. Blender opens it too.
+
+Run it again after `npm run face` whenever the face scan changes.
+
+**The hair is generated in the browser,** from the settings in the lab's Hair section: loose or bun,
+strand count, length, part, bun height and size. So changing the style needs no rebuild.
 
 ## Voice sample (for the voice clone, phase 3)
 
@@ -230,6 +249,7 @@ A glTF binary file, a standard 3D format that three.js and Blender both open. It
 | Triangle primitive | The vertices, the triangles and the UVs (`TEXCOORD_0`). Blender imports this as the face surface. |
 | Line primitive | The same vertices, with an index list of every distinct triangle side (3,526 edges). The site draws these as the wireframe lines. |
 | Morph targets | One per slider, named in the mesh's `extras.targetNames`, in the same order as the clips' `names`. Stored sparse: only vertices that move take up space. |
+| `COLOR_0` | Each point's color in the texture photos, in linear RGB, mostly from the photo that faced it most squarely. The lab's "photo color" effect uses it. The photos themselves aren't included. |
 | Node `extras.eyes` | The eye centers and radius from `face.json`. |
 
 ### `clips.bin`: all five clips, packed
@@ -248,4 +268,16 @@ One little-endian binary file, about a third the size of the JSON clips:
    - **Eye angles:** int16, frames × 6, scaled the same way.
 
 `lookAt` isn't packed, because the site turns the eyes with the eye angles instead.
+
+### `head.glb`: the head, neck and shoulders
+
+Written by `npm run head`, in the same face space and meters as `face.json`. One mesh, `Head`:
+
+| Part | What it holds |
+|---|---|
+| Triangle primitive | The surface, for Blender, and for hiding what's behind the head on the site |
+| Line primitive | The edges of the base's four-sided faces, drawn as the head's grid |
+| `_HEAD_WEIGHT` | How much each point turns with the head: 1 for the head, 0 for the shoulders, blending across the neck |
+| `_SEAM_INDEX`, `_SEAM_WEIGHT` | The scan outline vertex each point near the face's edge follows, and how much. Points farther than 3 cm from the edge have weight 0. |
+| Node `extras` | `pivot` (where the head turns, at the top of the neck), `eyeY`, `scalp` (the triangles the hair grows from), and the simple shapes the hair drapes over: `torso` (a dome over the shoulders) and `neck` (a cylinder) |
 

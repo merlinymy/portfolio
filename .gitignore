@@ -156,3 +156,5 @@ xcuserdata/
 # Playwright test output
 test-results/
 playwright-report/
+# Downloaded MakeHuman base mesh (re-downloaded and checked by npm run head)
+tools/head/.cache/

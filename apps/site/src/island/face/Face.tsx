@@ -1,17 +1,16 @@
 /**
- * The face in the scene: points, lines and eye rings, updated every frame through the motion
- * layers of plan §5.4 (clip, lip-sync, look-at, then the shader effects).
+ * The face in the scene: the scanned face, its eye rings, the fitted head, neck and shoulders, and
+ * the hair, updated every frame through the motion layers of plan §5.4 (clip, lip-sync, look-at,
+ * then the shader effects). Geometry and materials are built in scene.ts.
  */
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import {
-  BufferAttribute,
-  BufferGeometry,
   Color,
-  DynamicDrawUsage,
   Euler,
-  Group,
+  type LineSegments,
   Matrix4,
+  type Object3D,
   PerspectiveCamera,
   Plane,
   Quaternion,
@@ -20,8 +19,10 @@ import {
   Vector3,
 } from "three";
 import type { FaceData } from "./data";
+import { growHair } from "./hair";
 import { prefersReducedMotion, type LookInput } from "./input";
 import { Babbler, ClipBlend, ClipPlayer, Gaze, LipSync, Pose, approach, clamp, mixExpressions } from "./motion";
+import { buildScene, hairShape, shapeHead } from "./scene";
 import {
   ALWAYS_ON,
   EFFECTS,
@@ -33,19 +34,16 @@ import {
   type EffectName,
   type FaceState,
 } from "./settings";
-import { createMaterial, createUniforms } from "./shaders";
 
 const DEG = Math.PI / 180;
 export const FOV = 30;
-/**
- * The area kept in view around the face, in meters (the scan is about 16 × 18 cm). It leaves room
- * for the buttons, and looking slightly above the face's middle sets the face a little low, clear
- * of the name in the top-left corner.
- */
-const FRAME = { width: 0.21, height: 0.32, centerY: 0.015, centerZ: 0.02 };
+/** The depth the camera aims at, in face space: just in front of the eyes. */
+const CENTER_Z = 0.02;
 /** How close a click must land to a point to start a ripple, in CSS pixels. */
 const CLICK_RADIUS = 36;
 const INTRO_SECONDS = 2.4;
+/** How long the lab's hair and head-size sliders must rest before the hair regrows, in seconds. */
+const REGROW_DELAY = 0.15;
 /**
  * Where the six profile buttons sit around the face, in degrees counterclockwise from the
  * viewer's right, in the nav's order: About, Experience, Projects, Skills, Résumé, Contact.
@@ -60,105 +58,14 @@ export interface FaceButtons {
   links: HTMLElement[];
 }
 
-/** A repeatable random sequence, so the scatter and twinkle look the same on every visit. */
-function random(seed: number) {
-  return () => {
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function scatterAttributes(count: number, seed: number) {
-  const next = random(seed);
-  const seeds = new Float32Array(count);
-  const scatter = new Float32Array(count * 3);
-  const direction = new Vector3();
-  for (let i = 0; i < count; i++) {
-    seeds[i] = next();
-    direction.set(next() * 2 - 1, next() * 2 - 1, next() * 2 - 1).normalize().multiplyScalar(0.5 + next() * 0.5);
-    direction.toArray(scatter, i * 3);
-  }
-  return { seeds, scatter };
-}
-
-/** Points around each pupil, on the eyeball's surface: an iris ring and a pupil ring. */
-function eyeRing(radius: number): Float32Array {
-  const rings = [
-    { r: radius * 0.48, n: 20 },
-    { r: radius * 0.2, n: 10 },
-  ];
-  const points: number[] = [];
-  for (const { r, n } of rings) {
-    const z = Math.sqrt(radius * radius - r * r);
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2;
-      points.push(Math.cos(a) * r, Math.sin(a) * r, z);
-    }
-  }
-  return new Float32Array(points);
-}
-
-function buildScene(data: FaceData) {
-  const uniforms = createUniforms();
-  const materials = {
-    points: createMaterial(uniforms, "points", settings.look.pointOpacity),
-    lines: createMaterial(uniforms, "lines", settings.look.lineOpacity),
-    eyes: createMaterial(uniforms, "points", settings.look.eyeOpacity),
-  };
-
-  const positions = new Float32Array(data.base);
-  const position = new BufferAttribute(positions, 3).setUsage(DynamicDrawUsage);
-  const { seeds, scatter } = scatterAttributes(data.vertexCount, 7);
-  const seed = new BufferAttribute(seeds, 1);
-  const scatterAttr = new BufferAttribute(scatter, 3);
-  const fade = new BufferAttribute(new Float32Array(data.vertexCount).fill(1), 1);
-
-  const points = new BufferGeometry();
-  const lines = new BufferGeometry();
-  for (const geometry of [points, lines]) {
-    geometry.setAttribute("position", position);
-    geometry.setAttribute("aSeed", seed);
-    geometry.setAttribute("aScatter", scatterAttr);
-    geometry.setAttribute("aFade", fade);
-  }
-  lines.setIndex(new BufferAttribute(data.edges, 1));
-
-  const ring = eyeRing(data.eyes.radius);
-  const ringCount = ring.length / 3;
-  const eyePositions = new Float32Array(ringCount * 2 * 3);
-  const eyeFade = new Float32Array(ringCount * 2).fill(1);
-  const eyeScatter = scatterAttributes(ringCount * 2, 11);
-  // One seed per eye, so wind sways each ring as a whole instead of breaking up its circle.
-  eyeScatter.seeds.fill(0.31, 0, ringCount).fill(0.67, ringCount);
-  const eyes = new BufferGeometry();
-  eyes.setAttribute("position", new BufferAttribute(eyePositions, 3).setUsage(DynamicDrawUsage));
-  eyes.setAttribute("aSeed", new BufferAttribute(eyeScatter.seeds, 1));
-  eyes.setAttribute("aScatter", new BufferAttribute(eyeScatter.scatter, 3));
-  eyes.setAttribute("aFade", new BufferAttribute(eyeFade, 1).setUsage(DynamicDrawUsage));
-
-  return {
-    uniforms,
-    materials,
-    geometries: { points, lines, eyes },
-    positions,
-    eyeRing: ring,
-    eyePositions,
-    eyeFade,
-    dispose() {
-      for (const g of [points, lines, eyes]) g.dispose();
-      for (const m of Object.values(materials)) m.dispose();
-    },
-  };
-}
-
 function buildRig(data: FaceData) {
   const sliders = data.names.length;
   const players = Object.fromEntries(
     Object.values(data.clips).map((clip) => [clip.name, new ClipPlayer(clip)]),
   ) as Record<keyof FaceData["clips"], ClipPlayer>;
   const levels = Object.fromEntries(Object.keys(EFFECTS).map((name) => [name, 0])) as Record<EffectName, number>;
+  let chinY = Infinity;
+  for (let i = 1; i < data.base.length; i += 3) chinY = Math.min(chinY, data.base[i]);
   return {
     players,
     blend: new ClipBlend(sliders),
@@ -175,6 +82,8 @@ function buildRig(data: FaceData) {
     look: { yaw: 0, pitch: 0 },
     head: { yaw: 0, pitch: 0 },
     eye: { yaw: 0, pitch: 0 },
+    /** The head's angles, followed slowly, so the hair's ends can trail behind. */
+    lag: { yaw: 0, pitch: 0 },
     talk: 0,
     loudness: 0,
     brightness: 1,
@@ -183,6 +92,13 @@ function buildRig(data: FaceData) {
     /** Sideways camera offset in meters, for an open panel. */
     shift: 0,
     floating: false,
+    chinY,
+    headKey: "",
+    hairKey: "",
+    hairChangedAt: 0,
+    hairPending: false,
+    /** The head's turn about the neck, shared with the shader and the CPU-side projections. */
+    headMatrix: new Matrix4(),
   };
 }
 
@@ -190,6 +106,7 @@ const scratch = {
   v: new Vector3(),
   q: new Quaternion(),
   e: new Euler(),
+  m: new Matrix4(),
   color: new Color(),
   stateColor: new Color(),
   ndc: new Vector2(),
@@ -200,42 +117,36 @@ const scratch = {
 };
 
 export function Face({ data, input, buttons }: { data: FaceData; input: LookInput; buttons?: FaceButtons }) {
-  const head = useRef<Group>(null);
-  const distance = useRef(0.5);
+  const hairRef = useRef<LineSegments>(null);
+  const headRefs = useRef<Object3D[]>([]);
+  const occluderRefs = useRef<Object3D[]>([]);
   const scene = useMemo(() => buildScene(data), [data]);
   const rig = useMemo(() => buildRig(data), [data]);
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
-  const size = useThree((s) => s.size);
 
   useEffect(() => () => scene.dispose(), [scene]);
 
-  // Back the camera off until the face area fits both the width and the height.
-  useEffect(() => {
-    const t = Math.tan((FOV / 2) * DEG);
-    const aspect = size.width / Math.max(1, size.height);
-    distance.current = Math.max(FRAME.height / 2 / t, FRAME.width / 2 / (t * aspect));
-    camera.position.set(0, FRAME.centerY, FRAME.centerZ + distance.current);
-    camera.lookAt(0, FRAME.centerY, FRAME.centerZ);
-    camera.updateProjectionMatrix();
-  }, [camera, size]);
-
   useFrame((frame, delta) => {
-    const group = head.current;
-    if (!group) return;
     const dt = Math.min(delta, 0.05);
     const now = frame.clock.elapsedTime;
     const { pose, levels } = rig;
     const m = settings.motion;
+    const look = settings.look;
     const reduced = prefersReducedMotion();
     const u = scene.uniforms;
+    const width = frame.size.width;
+    const height = Math.max(1, frame.size.height);
 
-    // With a panel open on the right, slide the view so the face sits in the space beside it.
-    const visibleWidth =
-      2 * distance.current * Math.tan((FOV / 2) * DEG) * (frame.size.width / Math.max(1, frame.size.height));
-    const shift = (control.panelInset / 2 / Math.max(1, frame.size.width)) * visibleWidth;
+    // Framing: back the camera off until the frame fits both ways. With a panel open on the right,
+    // slide the view so the face sits in the space beside it.
+    const tan = Math.tan((FOV / 2) * DEG);
+    const aspect = width / height;
+    const distance = Math.max(look.frameHeight / 2 / tan, look.frameWidth / 2 / (tan * aspect));
+    const visibleWidth = 2 * distance * tan * aspect;
+    const shift = (control.panelInset / 2 / Math.max(1, width)) * visibleWidth;
     rig.shift = approach(rig.shift, shift, dt, reduced ? 0 : 0.3);
-    camera.position.x = rig.shift;
-    camera.lookAt(rig.shift, FRAME.centerY, FRAME.centerZ);
+    camera.position.set(rig.shift, look.frameCenterY, CENTER_Z + distance);
+    camera.lookAt(rig.shift, look.frameCenterY, CENTER_Z);
     camera.updateMatrixWorld();
 
     // State changes pick the base clip; a strike shows briefly, then returns.
@@ -270,7 +181,7 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
     rig.loudness = approach(rig.loudness, speaking ? rig.lip.openness : 0, dt, 0.05);
 
     // 4. Look-at: the head turns part of the way, the eyes the rest, within the captured range.
-    // An open panel or a keyboard-focused button takes the face's attention from the pointer.
+    //    An open panel or a keyboard-focused button takes the face's attention from the pointer.
     let [targetX, targetY] = [input.x, input.y];
     let steering = input.active;
     if (control.attention) {
@@ -292,17 +203,59 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
     rig.eye.pitch = approach(rig.eye.pitch, eyePitch, dt, m.eyeSmoothing);
     rig.gaze.apply(rig.eye.yaw, rig.eye.pitch, rig.follow, pose);
 
-    group.rotation.set(
-      pose.head[0] * m.clipHead - rig.head.pitch,
-      pose.head[1] * m.clipHead + rig.head.yaw,
-      pose.head[2] * m.clipHead,
-      "XYZ",
-    );
-    group.updateMatrixWorld();
+    // The head turns about the top of the neck: the shader applies this to every point by its
+    // head weight, and the CPU uses the same matrix for clicks, the magnet and the buttons.
+    const pivot = data.head?.pivot ?? [0, 0, 0];
+    const turnX = pose.head[0] * m.clipHead - rig.head.pitch;
+    const turnY = pose.head[1] * m.clipHead + rig.head.yaw;
+    scratch.e.set(turnX, turnY, pose.head[2] * m.clipHead, "XYZ");
+    rig.headMatrix
+      .makeTranslation(pivot[0], pivot[1], pivot[2])
+      .multiply(scratch.m.makeRotationFromEuler(scratch.e))
+      .multiply(scratch.inverse.makeTranslation(-pivot[0], -pivot[1], -pivot[2]));
+    u.uHead.value.copy(rig.headMatrix);
+    u.uPivot.value.set(pivot[0], pivot[1], pivot[2]);
+    const hairSettings = settings.hair;
+    rig.lag.yaw = approach(rig.lag.yaw, turnY, dt, 0.25);
+    rig.lag.pitch = approach(rig.lag.pitch, turnX, dt, 0.25);
+    u.uLag.value.set((rig.lag.pitch - turnX) * hairSettings.lag, (rig.lag.yaw - turnY) * hairSettings.lag);
 
     // Expressions are mixed here on the CPU (plan §5.3); the shader adds effects on top.
     mixExpressions(data.base, data.targets, pose.weights, scene.positions);
     scene.geometries.points.attributes.position.needsUpdate = true;
+
+    // The head: lab size corrections, then the seam, which follows the face's expressions.
+    if (scene.head && data.head) {
+      const h = data.head;
+      const s = settings.head;
+      const key = `${s.width},${s.height},${s.depth}`;
+      if (key !== rig.headKey) {
+        shapeHead(h, s, scene.head.shaped);
+        scene.head.positions.set(scene.head.shaped);
+        rig.headKey = key;
+      }
+      const { positions: hp, shaped, seam } = scene.head;
+      for (const i of seam) {
+        const w = h.seamWeight[i];
+        const j = h.seamIndex[i];
+        for (let k = 0; k < 3; k++) hp[i * 3 + k] = shaped[i * 3 + k] + w * (scene.positions[j * 3 + k] - data.base[j * 3 + k]);
+      }
+      scene.head.geometry.attributes.position.needsUpdate = true;
+      for (const object of headRefs.current) object.visible = s.show;
+
+      // The hair regrows when its settings or the head's shape change, once the sliders rest.
+      const hairKey = JSON.stringify(hairSettings) + key;
+      if (hairKey !== rig.hairKey) {
+        rig.hairKey = hairKey;
+        rig.hairChangedAt = now;
+        rig.hairPending = true;
+      }
+      if (rig.hairPending && now - rig.hairChangedAt >= REGROW_DELAY && hairRef.current) {
+        rig.hairPending = false;
+        hairRef.current.geometry = scene.setHair(growHair(hairShape(h, scene.head.shaped, rig.chinY), hairSettings));
+      }
+      if (hairRef.current) hairRef.current.visible = hairSettings.show;
+    }
 
     // Eye rings turn with the recorded or looked-at eye angles and fade as the eyelids close.
     const ringCount = scene.eyeRing.length / 3;
@@ -338,8 +291,8 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
     const calm = reduced ? 0.3 : 1;
 
     u.uTime.value = now;
-    u.uScale.value = (frame.size.height * frame.viewport.dpr) / (2 * Math.tan((FOV / 2) * DEG));
-    u.uSize.value = settings.look.pointSize / 1000;
+    u.uScale.value = (frame.size.height * frame.viewport.dpr) / (2 * tan);
+    u.uSize.value = look.pointSize / 1000;
     u.uWind.value = amount("wind") * calm;
     u.uWindSpeed.value = fx.wind.speed;
     u.uRipple.value = amount("ripple") * calm;
@@ -359,6 +312,7 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
     u.uShimmerSpeed.value = fx.shimmer.speed;
     u.uTwinkle.value = amount("twinkle") * calm;
     u.uTwinkleSpeed.value = fx.twinkle.speed;
+    u.uHairSway.value = hairSettings.sway * calm;
 
     // The intro plays once on load (or on request from the lab).
     if (rig.introStart < 0 || control.replayIntro) {
@@ -367,9 +321,13 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
     }
     const introOn = fx.assemble.mode !== "off" && !reduced;
     u.uAssemble.value = introOn ? clamp(((now - rig.introStart) * fx.assemble.speed) / INTRO_SECONDS, 0, 1) : 1;
+    // The occluder is a solid surface, so it steps aside while the points fly in or blow away.
+    const occlude = look.occlude && u.uAssemble.value >= 1 && levels.dust < 0.02;
+    occluderRefs.current.forEach((object, i) => {
+      object.visible = occlude && (i === 0 || settings.head.show);
+    });
 
     // The palette shifts toward the state's color, and brightness follows the state.
-    const look = settings.look;
     scratch.color.set(look.baseColor);
     scratch.stateColor.set(settings.states[rig.state].color);
     scratch.color.lerp(scratch.stateColor, clamp(amount("stateColor"), 0, 1));
@@ -377,19 +335,26 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
     u.uColor.value.copy(rig.color);
     rig.brightness = approach(rig.brightness, settings.states[rig.state].brightness, dt, 0.4);
     u.uBrightness.value = rig.brightness;
-    scene.materials.points.uniforms.uOpacity.value = look.pointOpacity;
-    scene.materials.lines.uniforms.uOpacity.value = look.lineOpacity;
-    scene.materials.eyes.uniforms.uOpacity.value = look.eyeOpacity;
-    scene.materials.eyes.uniforms.uSizeScale.value = look.eyeSize;
-    scene.materials.eyes.uniforms.uGain.value = look.eyeGlow;
+    const mat = scene.materials;
+    mat.points.uniforms.uOpacity.value = look.pointOpacity;
+    mat.lines.uniforms.uOpacity.value = look.lineOpacity;
+    mat.eyes.uniforms.uOpacity.value = look.eyeOpacity;
+    mat.eyes.uniforms.uSizeScale.value = look.eyeSize;
+    mat.eyes.uniforms.uGain.value = look.eyeGlow;
+    mat.headPoints.uniforms.uOpacity.value = settings.head.pointOpacity;
+    mat.headLines.uniforms.uOpacity.value = settings.head.lineOpacity;
+    mat.hair.uniforms.uOpacity.value = hairSettings.opacity;
+    // Photo color: the face's points take their real colors, and the head the average skin tone.
+    const photo = clamp(amount("photoColor"), 0, 1);
+    for (const material of [mat.points, mat.lines, mat.headPoints, mat.headLines]) material.uniforms.uPhoto.value = photo;
 
     // Magnet: where the pointer meets a plane just in front of the face, in face space.
     const magnet = amount("magnet") * calm;
     u.uMagnet.value = 0;
     if (magnet > 0.01 && input.pointerPx.inside) {
-      scratch.ndc.set((input.pointerPx.x / frame.size.width) * 2 - 1, -(input.pointerPx.y / frame.size.height) * 2 + 1);
+      scratch.ndc.set((input.pointerPx.x / width) * 2 - 1, -(input.pointerPx.y / height) * 2 + 1);
       scratch.raycaster.setFromCamera(scratch.ndc, camera);
-      scratch.inverse.copy(group.matrixWorld).invert();
+      scratch.inverse.copy(rig.headMatrix).invert();
       scratch.raycaster.ray.applyMatrix4(scratch.inverse);
       if (scratch.raycaster.ray.intersectPlane(scratch.plane, scratch.hit)) {
         u.uMagnetPos.value.copy(scratch.hit);
@@ -397,25 +362,31 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
       }
     }
 
-    // Ripples start at the point nearest a click, if the click landed on the face.
+    // Ripples start at the point nearest a click, on the face or the head.
     while (input.clicks.length) {
       const click = input.clicks.shift()!;
       if (levels.ripple < 0.5) continue;
-      let best = -1;
+      let best: { at: Float32Array; i: number } | undefined;
       let bestDistance = CLICK_RADIUS * CLICK_RADIUS;
-      for (let i = 0; i < data.vertexCount; i++) {
-        scratch.v.fromArray(scene.positions, i * 3).applyMatrix4(group.matrixWorld).project(camera);
-        const dx = ((scratch.v.x + 1) / 2) * frame.size.width - click.x;
-        const dy = ((1 - scratch.v.y) / 2) * frame.size.height - click.y;
+      const consider = (at: Float32Array, i: number, turns: boolean) => {
+        scratch.v.fromArray(at, i * 3);
+        if (turns) scratch.v.applyMatrix4(rig.headMatrix);
+        scratch.v.project(camera);
+        const dx = ((scratch.v.x + 1) / 2) * width - click.x;
+        const dy = ((1 - scratch.v.y) / 2) * height - click.y;
         const d = dx * dx + dy * dy;
         if (d < bestDistance) {
           bestDistance = d;
-          best = i;
+          best = { at, i };
         }
+      };
+      for (let i = 0; i < data.vertexCount; i++) consider(scene.positions, i, true);
+      if (scene.head && data.head && settings.head.show) {
+        for (let i = 0; i < data.head.vertexCount; i++) consider(scene.head.positions, i, data.head.headWeight[i] > 0.5);
       }
-      if (best >= 0) {
+      if (best) {
         const slot = u.uRipples.value[rig.nextRipple++ % u.uRipples.value.length];
-        slot.set(scene.positions[best * 3], scene.positions[best * 3 + 1], scene.positions[best * 3 + 2], now);
+        slot.set(best.at[best.i * 3], best.at[best.i * 3 + 1], best.at[best.i * 3 + 2], now);
       }
     }
 
@@ -442,18 +413,35 @@ export function Face({ data, input, buttons }: { data: FaceData; input: LookInpu
           scratch.v.set(Math.cos(angle) * 0.118 * b.spread, Math.sin(angle) * 0.118 * b.spread + 0.005, 0.03);
           if (style === "ring" && !reduced) scratch.v.y += Math.sin(now * 0.9 * b.speed + i * 1.3) * 0.004 * b.bob;
           // "head" turns with the face; the other styles stay level.
-          if (style === "head") scratch.v.applyMatrix4(group.matrixWorld);
+          if (style === "head") scratch.v.applyMatrix4(rig.headMatrix);
           scratch.v.project(camera);
-          const x = ((scratch.v.x + 1) / 2) * frame.size.width;
-          const y = ((1 - scratch.v.y) / 2) * frame.size.height;
+          const x = ((scratch.v.x + 1) / 2) * width;
+          const y = ((1 - scratch.v.y) / 2) * height;
           link.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%)`;
         });
       }
     }
   });
 
+  const keepHead = (object: Object3D | null) => {
+    if (object && !headRefs.current.includes(object)) headRefs.current.push(object);
+  };
+  const keepOccluder = (object: Object3D | null) => {
+    if (object && !occluderRefs.current.includes(object)) occluderRefs.current.push(object);
+  };
   return (
-    <group ref={head}>
+    <group>
+      <mesh ref={keepOccluder} geometry={scene.geometries.surface} material={scene.materials.occluder} frustumCulled={false} />
+      {scene.head && (
+        <mesh ref={keepOccluder} geometry={scene.head.surface} material={scene.materials.occluder} frustumCulled={false} />
+      )}
+      {scene.head && (
+        <>
+          <lineSegments ref={keepHead} geometry={scene.head.lines} material={scene.materials.headLines} frustumCulled={false} />
+          <points ref={keepHead} geometry={scene.head.geometry} material={scene.materials.headPoints} frustumCulled={false} />
+        </>
+      )}
+      <lineSegments ref={hairRef} geometry={scene.hair} material={scene.materials.hair} frustumCulled={false} />
       <lineSegments geometry={scene.geometries.lines} material={scene.materials.lines} frustumCulled={false} />
       <points geometry={scene.geometries.points} material={scene.materials.points} frustumCulled={false} />
       <points geometry={scene.geometries.eyes} material={scene.materials.eyes} frustumCulled={false} />

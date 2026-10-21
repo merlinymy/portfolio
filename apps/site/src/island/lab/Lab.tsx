@@ -123,7 +123,70 @@ export default function Lab({ data }: { data: FaceData }) {
         look.baseColor = v;
       },
     },
+    frameWidth: slider(look, "frameWidth", 0.15, 0.6, 0.01, "view width (m)"),
+    frameHeight: slider(look, "frameHeight", 0.2, 0.7, 0.01, "view height (m)"),
+    frameCenterY: slider(look, "frameCenterY", -0.15, 0.1, 0.005, "view center (m)"),
+    occlude: {
+      value: look.occlude,
+      label: "hide what's behind",
+      hint: "Off: see through the face and head, like a hologram",
+      onChange: (v: boolean) => {
+        look.occlude = v;
+      },
+    },
   });
+
+  const head = settings.head;
+  useControls(
+    "Head",
+    {
+      showHead: {
+        value: head.show,
+        label: "show",
+        onChange: (v: boolean) => {
+          head.show = v;
+        },
+      },
+      headWidth: slider(head, "width", 0.8, 1.25, 0.01, "width"),
+      headHeight: slider(head, "height", 0.8, 1.25, 0.01, "height"),
+      headDepth: slider(head, "depth", 0.8, 1.25, 0.01, "depth"),
+      headPoints: slider(head, "pointOpacity", 0, 1, 0.01, "points"),
+      headLines: slider(head, "lineOpacity", 0, 1, 0.01, "lines"),
+    },
+    { collapsed: true },
+  );
+
+  const hair = settings.hair;
+  useControls(
+    "Hair",
+    {
+      showHair: {
+        value: hair.show,
+        label: "show",
+        onChange: (v: boolean) => {
+          hair.show = v;
+        },
+      },
+      hairStyle: {
+        value: hair.style,
+        label: "style",
+        options: ["loose", "bun"],
+        onChange: (v: "loose" | "bun") => {
+          hair.style = v;
+        },
+      },
+      hairCount: slider(hair, "count", 200, 4000, 100, "strands"),
+      hairLength: slider(hair, "length", 0.02, 0.5, 0.01, "length below chin (m)"),
+      hairPart: slider(hair, "part", -0.04, 0.04, 0.002, "part (m from center)"),
+      hairClump: slider(hair, "clump", 0, 1, 0.05, "locks"),
+      bunHeight: slider(hair, "bunHeight", 0, 1, 0.05, "bun height"),
+      bunSize: slider(hair, "bunSize", 0.04, 0.12, 0.005, "bun size (m)"),
+      hairSway: slider(hair, "sway", 0, 3, 0.05, "sway"),
+      hairLag: slider(hair, "lag", 0, 3, 0.05, "trail on turns"),
+      hairOpacity: slider(hair, "opacity", 0, 1, 0.01, "opacity"),
+    },
+    { collapsed: true },
+  );
 
   // Leva needs every key unique across the panel, so keys carry the effect or state name.
   const effects = Object.fromEntries(

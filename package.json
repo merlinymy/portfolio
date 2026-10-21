@@ -16,11 +16,13 @@
     "check": "npm run check -w @portfolio/site",
     "face": "node tools/face/build.ts",
     "face:still": "node tools/face/still.ts",
-    "test:e2e": "npm run build && playwright test"
+    "test:e2e": "npm run build && playwright test",
+    "head": "node tools/head/build.ts"
   },
   "devDependencies": {
     "@gltf-transform/core": "^4.5.1",
     "@playwright/test": "^1.64.1",
+    "jpeg-js": "^0.4.4",
     "wrangler": "^4.151.3"
   }
 }

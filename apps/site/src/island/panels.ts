@@ -16,6 +16,8 @@ const SHEET_MEDIA = "(min-width: 900px)";
 export function setupPanels(): () => void {
   const dialogs = new Map<string, HTMLDialogElement>();
   const homes = new Map<string, { parent: Node; next: Node | null }>();
+  /** Panels closed because the address changed (Back, a link): those leave the address alone. */
+  const closedByAddress = new WeakSet<HTMLDialogElement>();
   let opener: HTMLElement | null = null;
 
   for (const { id } of PANELS) {
@@ -40,7 +42,7 @@ export function setupPanels(): () => void {
     dialog.addEventListener("click", (e) => {
       if (e.target === dialog) dialog.close();
     });
-    dialog.addEventListener("close", () => closed(id));
+    dialog.addEventListener("close", () => closed(id, dialog));
     document.body.append(dialog);
     dialogs.set(id, dialog);
   }
@@ -58,10 +60,15 @@ export function setupPanels(): () => void {
     if (control.state === "idle" || control.state === "listening") control.setState("panel");
   }
 
-  function closed(id: string) {
-    if (location.hash === `#${id}`) history.replaceState(null, "", location.pathname + location.search);
-    // The close event arrives a moment late, so when one panel replaced another, leave the new one be.
+  function closed(id: string, dialog: HTMLDialogElement) {
+    // Closing by hand (Esc, the close button, a click outside) clears the panel's #id from the
+    // address. A close caused by the address changing must not, because the close event arrives a
+    // moment late: after Back then Forward it would wipe the #id that was just restored.
+    const byHand = !closedByAddress.has(dialog);
+    closedByAddress.delete(dialog);
+    // If a panel has opened since, it now owns the address and the face's attention.
     if ([...dialogs.values()].some((d) => d.open)) return;
+    if (byHand && location.hash === `#${id}`) history.replaceState(null, "", location.pathname + location.search);
     control.panelInset = 0;
     control.attention = null;
     if (control.state === "panel") control.setState("idle");
@@ -72,9 +79,15 @@ export function setupPanels(): () => void {
   // The address decides which panel is open, so links, Back and Forward all work the same way.
   function sync() {
     const target = dialogs.get(decodeURIComponent(location.hash.slice(1)));
-    for (const dialog of dialogs.values()) if (dialog !== target && dialog.open) dialog.close();
+    for (const dialog of dialogs.values()) {
+      if (dialog === target || !dialog.open) continue;
+      closedByAddress.add(dialog);
+      dialog.close();
+    }
     if (target && !target.open) open(target);
   }
+  // Back and Forward announce themselves with popstate before hashchange; react to the first.
+  window.addEventListener("popstate", sync);
   window.addEventListener("hashchange", sync);
   sync();
 
@@ -94,6 +107,7 @@ export function setupPanels(): () => void {
   }
 
   return () => {
+    window.removeEventListener("popstate", sync);
     window.removeEventListener("hashchange", sync);
     for (const link of links) {
       link.removeEventListener("focus", onFocus);

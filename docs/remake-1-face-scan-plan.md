@@ -10,7 +10,7 @@ Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answe
 | 0b. Domain | Done: merlinyang.com's DNS is on Cloudflare (registration stays at Namecheap), and the current Vercel site still loads. There was no email forwarding to recreate. The tunnel hostname comes in phase 5. |
 | 1. Capture | Done. Hair photos dropped: the hair comes from a free model, and the head is rebuilt from your scan and the three face photos (§5.1). See below. |
 | 2a. Moving face | Done. Built: the converter (`npm run face`); the 3D face with clips, eyes following the pointer or a finger (tilt dropped, §5.5); all 14 effects; the face states; the `?lab` panel with a lip-sync strength control; the six floating buttons (three movement styles in the lab) and the pop-up panels (§4.2); the still image for browsers without WebGL and the link-preview image (`npm run face:still`); browser tests (`npm run test:e2e`, 9 passing). |
-| 2b. Head and hair | Next, or phase 3 (voice) first: your call |
+| 2b. Head and hair | Built (§5.8), waiting for your look in the lab: `npm run head`; loose and bun hair; the seam follows the face; photo color; hiding what's behind the head. Then phase 3. |
 
 **Phase 1 details:**
 - **Captured in the app,** each file checked:
@@ -559,6 +559,70 @@ Ripple on click works in every state except Locked.
 
 ---
 
+### 5.8 Head, neck, shoulders and hair (phase 2b)
+
+Your choices (2026-10-21):
+- **Body:** head, neck and shoulders.
+- **Hair:** generated in code.
+- **Styles:** loose and bun, both switchable in the lab so you can compare them, with the length
+  adjustable.
+
+**The base body.**
+- **Source:** MakeHuman's base human. It's CC0 (free for any use, no credit needed), as are all
+  MakeHuman's bundled assets.
+- **Cropped** to the head, neck and shoulders: about 4,800 points.
+- **Its faces have four sides,** so its lines draw as a tidy grid, which tells it apart from the
+  scanned face's triangles.
+
+**Your face stays your scan.** Only the sides, top and back of the head, the ears, the neck and the
+shoulders come from the base. The base's own face is reshaped for a moment so the rest of its head
+lines up with your face's outline (step 2), then deleted (step 3). Your expressions, eye movement
+and lip-sync keep driving your scanned face, as before.
+
+**Fitting it to you** (`tools/head/build.ts`, run with `npm run head`). The script is re-runnable,
+instead of modeling by hand in Blender, so a recapture only needs a re-run. The result,
+`public/face/head.glb`, still opens in Blender.
+1. **Line up.** Scale and move the base to match your eye centers, nose tip and chin.
+2. **Reshape.** Pull the base's face onto your scan, with the change fading out across the rest of
+   the head, so the two meet without a step.
+3. **Cut.** Remove the base's own face where your scan covers it, and snap the hole's edge onto
+   the scan's outline.
+4. **Head size.**
+   - Width and top come from the front texture photo, where your hair is tied back. The script
+     measures where dark hair meets the lighter wall.
+   - Lab sliders correct the width, height and depth by eye, since the photo shows no depth.
+5. **Seam.** Head points within 3 cm of the scan's edge follow its expressions, fading with
+   distance, so smiling or opening the jaw doesn't tear the forehead or chin away from the head.
+6. **Neck.** The head turns about the neck. The shoulders stay put, and the neck blends between
+   the two.
+
+**Hair** (`apps/site/src/island/face/hair.ts`, generated in the browser when the page loads):
+- **The same hair on every visit,** because the random choices come from a fixed seed.
+- **Lab settings:** style (loose or bun), strand count, length, part (center or side) and bun
+  height.
+- **Draping.** Strands start on the scalp and drape over a simplified head, neck and shoulders,
+  so they don't pass through the body.
+- **Loose:** strands fall down the back and over the shoulders, grouped into locks.
+- **Bun:** strands run from the hairline over the scalp to the bun, which is a coil of strands.
+- **Drawing:** lines in the same shader as the face. Wind sways the ends more than the roots, and
+  when the head turns, the ends trail behind for a moment.
+
+**Rendering changes:**
+- **One rotation for everything.** A single head turn, applied on the graphics chip, moves the
+  face, eyes, head and hair together, weighted across the neck.
+- **Framing** widens to fit the shoulders, so the face is smaller on screen.
+- **The turn limit loosens** from ±25° to ±35° (lab), now that there's no hollow mask to hide.
+- **Face colors from the photos.**
+  - The converter samples your three photos onto the face's points.
+  - A lab "photo color" effect blends them in. It's off by default, to keep the wireframe palette.
+  - Only the 1,220 point colors are published, not the photos.
+
+**Done when:**
+- The full head and shoulders turn with the pointer.
+- No seam shows when the face moves.
+- Both hairstyles switch in the lab.
+- The browser tests pass.
+
 ## 6. Voice and lip-sync
 
 ### 6.1 Reply audio pipeline
@@ -993,7 +1057,7 @@ Each phase ends with something you can see working.
 | 0b    | Move merlinyang.com's DNS to Cloudflare. Records keep pointing at Vercel, so the current site stays up. Recreate Namecheap's email forwarding in Cloudflare Email Routing, which stops working otherwise. Set up the tunnel hostname for the API.                                | DNS answers from Cloudflare; the current site and email forwarding are unchanged                                                    |
 | 1     | Build the iPhone app on your phone; add the new clips, viseme capture and the format README; capture your data                                                                 | `face.json`, 5 clips, `visemes.json`, `gaze.json` and the texture photos are on the Mac                                                                               |
 | 2     | Face rendering, motion layers, pointer and finger following, floating buttons, all effects, the `?lab` page                                                                                | The face follows the pointer and a finger, the buttons float and open panels, and every effect toggles in the lab |
-| 2b | Head and hair: in Blender, reshape a free base head around the exported face mesh using your texture photos, add a free hair model (§5.1), bake the face texture, import into the site, make the seam follow the face, render hair strands as lines (§5.1) | The full head turns with the pointer, and no seam shows when the face moves |
+| 2b | Head, neck, shoulders and hair (§5.8): a script fits MakeHuman's CC0 base body to your scan and photos; hair is generated in the browser in two styles; the seam follows the face; face colors sampled from the photos | The full head turns with the pointer, and no seam shows when the face moves |
 | 3     | Native model server on the Mac and the voice bake-off                                                                                                                          | A script turns a sentence into your voice plus lip timing; RTF measured                                       |
 | 4     | Private knowledge folder, ingest into Postgres (pgvector + keyword search), search test                                                                                                                      | Your test questions pull the right passages                                                                   |
 | 5     | Chat backend: §7.1 pipeline, strikes, limits, handoff email, transcripts, health check, Worker `/api` proxy, stage timing logs                                                                   | Red-team set meets its targets; SSE confirmed through the proxy                                               |

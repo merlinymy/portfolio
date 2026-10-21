@@ -41,20 +41,49 @@ export interface GazePose {
   lookAt: number[];
 }
 
+/** The head, neck and shoulders fitted around the scan by tools/head/build.ts (plan §5.8). */
+export interface HeadData {
+  vertexCount: number;
+  /** Positions in the same face space and meters as the scan. */
+  base: Float32Array;
+  /** Pairs of point indices: the base body's four-sided faces, drawn as a grid. */
+  edges: Uint16Array;
+  /** Triples of point indices: the surface, which hides whatever is behind it. */
+  triangles: Uint16Array;
+  /** How much each point turns with the head: 1 for the head, 0 for the shoulders. */
+  headWeight: Float32Array;
+  /** The scan outline vertex each point follows, and how much (0 away from the face's edge). */
+  seamIndex: Uint16Array;
+  seamWeight: Float32Array;
+  /** Scalp triangles, as point indices, where hair grows. */
+  scalp: Uint16Array;
+  /** The point the head turns about (the top of the neck). */
+  pivot: [number, number, number];
+  eyeY: number;
+  torso: { center: number[]; radii: number[] };
+  neck: { center: number[]; radius: number; top: number; bottom: number };
+}
+
 export interface FaceData {
   /** The 52 slider names, in the order every weight list uses. */
   names: string[];
   vertexCount: number;
   /** Neutral positions, x, y, z per vertex, in meters (ARKit face space). */
   base: Float32Array;
+  /** Each point's color in the texture photos (linear RGB), if the converter could sample them. */
+  colors?: Float32Array;
   targets: Target[];
   /** Pairs of vertex indices, one pair per line. */
   edges: Uint16Array;
+  /** Triples of vertex indices: the surface, which hides whatever is behind it. */
+  triangles: Uint16Array;
   eyes: Eyes;
   clips: Record<ClipName, Clip>;
   gaze: Record<"center" | "left" | "right" | "up" | "down", GazePose>;
   /** Viseme id → 52 slider values. */
   visemes: Record<string, number[]>;
+  /** Missing until tools/head/build.ts has run; the face then shows on its own. */
+  head?: HeadData;
 }
 
 const BASE = "/face/";
@@ -99,19 +128,67 @@ async function loadMesh() {
     if ((object as Mesh).isMesh) triangles = object as Mesh;
     else if ((object as { isLineSegments?: boolean }).isLineSegments) edges = (object as Mesh).geometry;
   });
-  if (!triangles || !edges?.index || !eyes || !triangles.morphTargetDictionary) {
+  if (!triangles?.geometry.index || !edges?.index || !eyes || !triangles.morphTargetDictionary) {
     throw new Error("face.glb: missing the triangles, the lines, the eye positions or the slider names");
   }
   const dictionary = triangles.morphTargetDictionary;
   const names = Object.keys(dictionary).sort((a, b) => dictionary[a] - dictionary[b]);
   const geometry = triangles.geometry;
   const morphs = geometry.morphAttributes.position ?? [];
+  const color = geometry.getAttribute("color");
   return {
     names,
     base: positionsOf(geometry.attributes.position),
+    triangles: new Uint16Array(geometry.index!.array),
+    colors: color ? positionsOf(color) : undefined,
     targets: morphs.map((attribute) => sparseTarget(positionsOf(attribute))),
     edges: new Uint16Array(edges.index.array),
     eyes,
+  };
+}
+
+async function loadHead(): Promise<HeadData | undefined> {
+  let gltf;
+  try {
+    gltf = await new GLTFLoader().loadAsync(`${BASE}head.glb`);
+  } catch {
+    return undefined;
+  }
+  let surface: Mesh | undefined;
+  let lines: BufferGeometry | undefined;
+  let extras: Record<string, unknown> | undefined;
+  gltf.scene.traverse((object: Object3D) => {
+    if (object.userData.pivot) extras = object.userData;
+    if ((object as Mesh).isMesh) surface = object as Mesh;
+    else if ((object as { isLineSegments?: boolean }).isLineSegments) lines = (object as Mesh).geometry;
+  });
+  if (!surface?.geometry.index || !lines?.index || !extras) return undefined;
+  const g = surface.geometry;
+  // GLTFLoader lowercases custom attribute names.
+  const scalar = (name: string) => {
+    const a = g.getAttribute(name);
+    return Float32Array.from({ length: a.count }, (_, i) => a.getX(i));
+  };
+  const e = extras as {
+    pivot: [number, number, number];
+    eyeY: number;
+    scalp: number[];
+    torso: HeadData["torso"];
+    neck: HeadData["neck"];
+  };
+  return {
+    vertexCount: g.attributes.position.count,
+    base: positionsOf(g.attributes.position),
+    edges: new Uint16Array(lines.index.array),
+    triangles: new Uint16Array(g.index!.array),
+    headWeight: scalar("_head_weight"),
+    seamIndex: Uint16Array.from(scalar("_seam_index")),
+    seamWeight: scalar("_seam_weight"),
+    scalp: Uint16Array.from(e.scalp),
+    pivot: e.pivot,
+    eyeY: e.eyeY,
+    torso: e.torso,
+    neck: e.neck,
   };
 }
 
@@ -146,14 +223,15 @@ async function loadClips(): Promise<Record<ClipName, Clip>> {
 }
 
 export async function loadFace(): Promise<FaceData> {
-  const [mesh, clips, gaze, visemes] = await Promise.all([
+  const [mesh, clips, gaze, visemes, head] = await Promise.all([
     loadMesh(),
     loadClips(),
     fetchOk(`${BASE}gaze.json`).then((r) => r.json()),
     fetchOk(`${BASE}visemes.json`).then((r) => r.json()),
+    loadHead(),
   ]);
   if (gaze.names.join() !== mesh.names.join() || visemes.names.join() !== mesh.names.join()) {
     throw new Error("gaze.json or visemes.json lists the sliders in a different order from face.glb");
   }
-  return { ...mesh, vertexCount: mesh.base.length / 3, clips, gaze: gaze.poses, visemes: visemes.poses };
+  return { ...mesh, vertexCount: mesh.base.length / 3, clips, gaze: gaze.poses, visemes: visemes.poses, head };
 }
