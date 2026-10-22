@@ -12,7 +12,8 @@ Status: plan agreed 2026-10-20 and revised the same day (pgvector, instant answe
 | 2a. Moving face | Done. Built: the converter (`npm run face`); the 3D face with clips, eyes following the pointer or a finger (tilt dropped, §5.5); all 14 effects; the face states; the `?lab` panel with a lip-sync strength control; the six floating buttons (three movement styles in the lab) and the pop-up panels (§4.2); the still image for browsers without WebGL and the link-preview image (`npm run face:still`); browser tests (`npm run test:e2e`, 9 passing). |
 | 2b. Head and hair | **Paused (2026-10-21).** The core features (phases 3–7) come first. The realistic head, hair and bust will be modeled in Blender later and dropped in then (§5.8). The face-mesh-only wireframe stays as an artistic option. The code-generated head, hair and realistic mode stay in the lab until the Blender model replaces them. The site shows the face only, and the head file downloads only in the lab. |
 | 3. Voice | **Done on the MacBook Air (2026-10-21).** The voice is Pocket-TTS with sound-it-out spellings ("pocket-respelled", §6.3). The model server (`services/models/server.py`) turns a sentence into your voice plus word timing and mouth shapes in about 0.3–0.7 s, holding about 2.3 GB. A `launchd` agent keeps it running; it was tested on the Air. **Deferred:** installing it on the Mac mini and re-measuring there (your call, 2026-10-21). Visitors now only type, so there's no speech-to-text (§7.9). |
-| Face looks | **Planned (2026-10-21), before phase 4:** artistic looks for the face (flame, ink in water, face of water, raised from sand) to compare in the lab, then pick one default or keep points and edges. Plan: [face-looks-plan.md](face-looks-plan.md). |
+| 4. Knowledge | **Done on the MacBook Air (2026-10-21).** Your profile (`content/`) is cut into 60 passages and searched by meaning and by keyword in Postgres with pgvector (Docker, this Mac only), with Qwen3-Embedding-0.6B on the model server. All 39 test questions find their passage in the top 6, 29 of them first. Your fixed answers and small talk moved word for word into `knowledge/answers.yaml` and `knowledge/smalltalk.yaml`. Plan and details: [phase-4-knowledge-plan.md](phase-4-knowledge-plan.md). **Your review:** the test questions in `apps/server/test/search-questions.yaml`. |
+| Face looks | **Paused (2026-10-21).** Built and in the lab: flame, and ink in water (third try: a sculpted ink face that breaks up into wisps). Not built: face of water, raised from sand. You moved on to phase 4; the site keeps points and edges as its look, and a realistic look waits for the Blender model. Plan: [face-looks-plan.md](face-looks-plan.md). |
 
 **Phase 1 details:**
 - **Captured in the app,** each file checked:
@@ -232,8 +233,8 @@ Meaning-only search can rank a passage about "event streaming" above the one tha
 | Docker VM: api, Postgres with pgvector                       | about 1 GB                                                     |
 | Text-to-speech, cloned voice (Pocket-TTS, measured)     | about 2.7 GB                                                   |
 | Forced aligner (Qwen3-ForcedAligner-0.6B)              | about 1–1.5 GB                                                 |
-| Embedding model (Qwen3-Embedding-0.6B)                 | about 0.6 GB                                                   |
-| **Total**                                              | **about 9.5–11 GB**, leaving roughly 5–6.5 GB for your other apps |
+| Embedding model (Qwen3-Embedding-0.6B, measured on the Air) | about 1.6 GB                                              |
+| **Total**                                              | **about 10.5–12 GB**, leaving roughly 4–5.5 GB for your other apps |
 
 **Why these models:**
 

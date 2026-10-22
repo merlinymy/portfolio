@@ -1,5 +1,6 @@
 """Checks the parts of the voice pipeline that don't need the models: reading numbers, swapping in
-sound-it-out spellings, turning word times into mouth shapes, and the server's answers.
+sound-it-out spellings, turning word times into mouth shapes, and the server's answers (speaking
+and embedding).
 
 Run: cd services/models && uv run pytest
 """
@@ -65,21 +66,35 @@ class FakeSpeaker:
         return audio, {"text": text, "spoken": text, "duration": 0.5, "words": [], "visemes": [[0.0, "sil"]], "timing": {}}
 
 
+class FakeEmbedder:
+    def embed(self, texts, kind="passage"):
+        # Queries and passages differ, so a test can tell which way a text was embedded.
+        return [[1.0 if kind == "query" else 0.0, float(len(t))] for t in texts]
+
+
 @pytest.fixture
 def client(monkeypatch):
     # Without `with`, TestClient doesn't start the app, so the real models never load.
     monkeypatch.setitem(server.state, "speaker", None)
+    monkeypatch.setitem(server.state, "embedder", None)
     return TestClient(server.app)
 
 
-def test_health_says_loading_until_the_models_are_ready(client, monkeypatch):
+@pytest.fixture
+def loaded(monkeypatch):
+    monkeypatch.setitem(server.state, "speaker", FakeSpeaker())
+    monkeypatch.setitem(server.state, "embedder", FakeEmbedder())
+
+
+def test_health_says_loading_until_every_model_is_ready(client, monkeypatch):
     assert client.get("/health").status_code == 503
     monkeypatch.setitem(server.state, "speaker", FakeSpeaker())
+    assert client.get("/health").status_code == 503
+    monkeypatch.setitem(server.state, "embedder", FakeEmbedder())
     assert client.get("/health").json()["ok"] is True
 
 
-def test_speak_returns_the_timing_and_a_playable_wav(client, monkeypatch):
-    monkeypatch.setitem(server.state, "speaker", FakeSpeaker())
+def test_speak_returns_the_timing_and_a_playable_wav(client, loaded):
     body = client.post("/speak", json={"text": "  Hello there.  "}).json()
     assert body["text"] == "Hello there."
     audio, rate = sf.read(io.BytesIO(base64.b64decode(body["audio"])))
@@ -87,6 +102,31 @@ def test_speak_returns_the_timing_and_a_playable_wav(client, monkeypatch):
 
 
 @pytest.mark.parametrize("text", ["", "   ", "x" * (server.MAX_CHARS + 1)])
-def test_speak_refuses_empty_or_overlong_text(client, monkeypatch, text):
-    monkeypatch.setitem(server.state, "speaker", FakeSpeaker())
+def test_speak_refuses_empty_or_overlong_text(client, loaded, text):
     assert client.post("/speak", json={"text": text}).status_code == 400
+
+
+def test_embed_returns_one_vector_per_text_in_order(client, loaded):
+    body = client.post("/embed", json={"texts": ["one", "three"], "kind": "query"}).json()
+    assert body["vectors"] == [[1.0, 3.0], [1.0, 5.0]]
+    assert body["model"] == server.EMBEDDING and body["dims"] == server.DIMS
+    # Passages are the default.
+    assert client.post("/embed", json={"texts": ["one"]}).json()["vectors"] == [[0.0, 3.0]]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"texts": []},
+        {"texts": ["fine", "  "]},
+        {"texts": ["x" * (server.MAX_EMBED_CHARS + 1)]},
+        {"texts": ["a"] * (server.MAX_TEXTS + 1)},
+        {"texts": ["fine"], "kind": "poem"},
+    ],
+)
+def test_embed_refuses_bad_requests(client, loaded, body):
+    assert client.post("/embed", json=body).status_code in (400, 422)
+
+
+def test_embed_waits_for_the_models(client):
+    assert client.post("/embed", json={"texts": ["hi"]}).status_code == 503

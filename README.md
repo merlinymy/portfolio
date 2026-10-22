@@ -13,7 +13,10 @@ career-only chat. The full plan is in
 | `apps/site/` | The website: Astro builds plain HTML, with React + TypeScript for the interactive parts |
 | `content/` | Profile text (experience, projects, skills, common questions) that the site is built from |
 | `tools/FaceScan.swiftpm/` | iPhone app that captures the face mesh and expression clips |
-| `services/models/` | Your cloned voice and the lip-timing model, run natively on the Mac, and the model server the chat calls ([services/models/README.md](services/models/README.md)) |
+| `apps/server/` | The chat backend, so far its search: the profile cut into passages and searched by meaning and keyword in Postgres ([apps/server/README.md](apps/server/README.md)) |
+| `services/models/` | Your cloned voice, the lip-timing model and the embedding model for search, run natively on the Mac, and the model server the chat calls ([services/models/README.md](services/models/README.md)) |
+| `knowledge.example/` | The format of the private `knowledge/` folder (fixed answers, small talk, private notes), with made-up values |
+| `docker-compose.yml` | Postgres with pgvector, in Docker, reachable from this Mac only |
 | `docs/` | Plans and design notes |
 | `wrangler.jsonc` | Cloudflare Workers config: which folder to publish, and later the `/api` route |
 
@@ -28,7 +31,11 @@ Run from the repo root, with Node 22.22 or newer:
 | `npm run dev:lan` | The same, also reachable from phones on the same Wi-Fi (it prints the address) |
 | `npm run build` | Builds the static site into `apps/site/dist/` |
 | `npm run check` | Type-checks the site |
-| `npm run voice` | Starts the model server: your cloned voice with lip timing, on this Mac only ([services/models/README.md](services/models/README.md)). With `npm run dev` running too, the lab's "Say" box at http://localhost:4321/?lab makes the face speak a sentence |
+| `npm run voice` | Starts the model server: your cloned voice with lip timing, and the embedding model for search, on this Mac only ([services/models/README.md](services/models/README.md)). With `npm run dev` running too, the lab's "Say" box at http://localhost:4321/?lab makes the face speak a sentence |
+| `npm run db` | Starts Postgres in Docker (needs Docker running, and `.env` from `.env.example`) |
+| `npm run ingest` | Cuts `content/` (and any private notes in `knowledge/extra/`) into passages and loads them into the search. Needs `npm run voice` and `npm run db`. Run it after editing either folder |
+| `npm run search -- "A question?"` | Shows the passages the chat would be given for a question |
+| `npm run test:search` | Checks that every test question in `apps/server/test/search-questions.yaml` finds its passage |
 | `npm run face` | Turns the private face capture in `knowledge/faceScan/` into the site's `apps/site/public/face/` files ([tools/face/README.md](tools/face/README.md)) |
 | `npm run head` | Generates the head, neck, shoulders and ears around the face from your scan and texture photos ([tools/face/README.md](tools/face/README.md)) |
 | `npm run face:still` | After a build, renders the still face image (for browsers without 3D) and the link-preview image with Chrome. Build again afterwards to include them. |

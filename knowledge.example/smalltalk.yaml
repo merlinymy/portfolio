@@ -1,0 +1,14 @@
+# Small talk, with made-up values (the real file is knowledge/smalltalk.yaml, which git ignores).
+# The chat answers at most `perConversation` of these per conversation, word for word; after that,
+# small talk gets `afterLimit` instead, with no strike.
+perConversation: 2
+afterLimit: >-
+  I'd love to chat more about that in person. Want me to pass your details to the real me?
+facts:
+  - id: where-based
+    question: Where are you based?
+    answer: I live in Springfield.
+    note: Questions about relocating get the availability-location answer.
+  - id: for-fun
+    question: What do you do for fun?
+    answer: I bake bread, badly but often.

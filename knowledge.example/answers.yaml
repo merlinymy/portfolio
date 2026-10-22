@@ -1,0 +1,39 @@
+# Fixed answers, with made-up values (the real file is knowledge/answers.yaml, which git ignores).
+#
+# Each entry:
+#   id           the name the strike check returns
+#   topic        what it answers
+#   alsoAskedAs  other ways people ask it (optional)
+#   answer       your exact words, spoken aloud, so written for speech
+#   followUp     one likely follow-up question and its answer (optional)
+#   rules        what the chat must never say on this topic (optional; for the output check)
+#   handoff      true: the chat doesn't answer, it offers to pass the visitor's details to you
+
+- id: availability-location
+  topic: Availability and location
+  answer: >-
+    I'm available for full-time roles from June 2030. I live in Springfield, and I'm happy to work
+    on-site or remotely.
+
+- id: salary-expectations
+  topic: Salary expectations
+  answer: >-
+    It depends on the role. Could you share the range you have in mind? If you'd like to talk
+    specifics, leave your details and I'll follow up personally.
+  rules:
+    - Never a number, never past or current pay.
+
+- id: how-you-build
+  topic: How do you build?
+  alsoAskedAs: [how do you work, what's your process]
+  answer: >-
+    I start by asking the people who'll use it what they actually need, then build the smallest
+    thing that tests it.
+  followUp:
+    when: Asked how they test it
+    answer: >-
+      With the people themselves, as early as I can.
+
+- id: greatest-weakness
+  topic: Greatest weakness
+  handoff: true

@@ -55,8 +55,15 @@ uv run server.py          # answers on http://127.0.0.1:8790, on this Mac only
     sentence at a time.
   - `words` and `visemes` are `null` if the aligner fails on a sentence. The browser then times the
     lips from the playing audio instead (plan §6.2).
+- **`POST /embed`** with `{"texts": [...], "kind": "passage"}` (or `"query"` for a visitor's
+  question) answers `{"model", "dims", "vectors"}`: 1,024 numbers per text, in order, for the chat's
+  search ([docs/phase-4-knowledge-plan.md](../../docs/phase-4-knowledge-plan.md)). The model is
+  Qwen3-Embedding-0.6B, on the graphics chip (`embed.py`). Questions get a one-line instruction
+  first, which is how that model is meant to be used. It takes up to 256 texts of up to 8,000
+  characters each; the whole profile (60 passages) embeds in about 3 s.
 - **One sentence at a time.** Each takes about 0.3–0.7 s on the MacBook Air, and the server holds
-  about 2.3 GB of memory.
+  about 4.7 GB of memory in all, measured 2026-10-21: the embedding model is about 1.6 GB of that,
+  and the voice, the aligner and the aligner's cache (capped at 1 GB) the rest.
 - **Only this Mac can reach it.** It answers on 127.0.0.1, where the chat backend reaches it from
   Docker as `host.docker.internal`. Nothing outside the Mac can, and the Cloudflare tunnel leads
   only to the chat backend.

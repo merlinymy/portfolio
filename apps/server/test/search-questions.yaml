@@ -1,0 +1,156 @@
+# The search test (npm run test:search; docs/phase-4-knowledge-plan.md). Each question passes when
+# one of its expected passages comes back among the 6 the chat would be given. A passage is named
+# by its file in content/ and a few words it contains, so reordering bullets doesn't break the test.
+#
+# Drafted 2026-10-21 from content/, for your review: edit, add or remove freely. Questions your
+# fixed answers cover (salary, why you're looking...) aren't here, since those skip the search.
+
+# Exact tool names: the keyword half of the search has to find these.
+- question: Have you used Qdrant?
+  expect:
+    - { source: skills.yaml, contains: Qdrant }
+    - { source: projects/arc.md, contains: Qdrant }
+    - { source: projects/ornl-capstone.md, contains: Qdrant }
+- question: Do you know Angular?
+  expect:
+    - { source: experience/siriusmindshare.md, contains: Angular }
+    - { source: skills.yaml, contains: Angular }
+- question: What's your experience with Docker?
+  expect:
+    - { source: experience/siriusmindshare.md, contains: Docker }
+    - { source: skills.yaml, contains: Docker }
+- question: Have you deployed anything to AWS?
+  expect:
+    - { source: experience/siriusmindshare.md, contains: AWS EC2 }
+    - { source: skills.yaml, contains: AWS EC2 }
+- question: Have you worked with Supabase?
+  expect:
+    - { source: experience/fantastbiotech.md, contains: Supabase }
+    - { source: skills.yaml, contains: Supabase }
+- question: Have you used Socket.IO or built anything real-time?
+  expect:
+    - { source: projects/fireproofsheep.md, contains: Socket.IO }
+- question: Do you know Three.js?
+  expect:
+    - { source: earlier-projects.yaml, contains: Three.js }
+- question: Have you worked on protein design or machine learning for biology?
+  expect:
+    - { source: projects/peptide-design.md, contains: RFdiffusion }
+    - { source: skills.yaml, contains: RFdiffusion }
+
+# Stories: the meaning half of the search has to find these, since the question shares few words
+# with the passage.
+- question: Tell me about a time you debugged a hard production problem.
+  expect:
+    - { source: projects/arc.md, contains: memory leak }
+    - { source: projects/arc.md, contains: tqdm }
+    - { source: projects/arc.md, contains: Audited the live index }
+- question: How did you find out why the citations were wrong?
+  expect:
+    - { source: projects/arc.md, contains: Audited the live index }
+    - { source: instant.yaml, contains: 44 percent }
+- question: What was the memory leak you fixed?
+  expect:
+    - { source: projects/arc.md, contains: memory leak }
+- question: Have you dealt with concurrency problems?
+  expect:
+    - { source: projects/arc.md, contains: concurrent users }
+- question: How do you test whether a RAG system gives correct answers?
+  expect:
+    - { source: projects/arc.md, contains: blind A/B }
+    - { source: skills.yaml, contains: LLM-as-judge }
+- question: How do you use AI coding agents?
+  expect:
+    - { source: projects/arc.md, contains: Claude Code }
+    - { source: skills.yaml, contains: Claude Code }
+    - { source: instant.yaml, contains: AI coding agents }
+- question: How do you keep LLM costs down?
+  expect:
+    - { source: projects/jobhunt.md, contains: model spend }
+- question: How do you stop a language model from making things up?
+  expect:
+    - { source: projects/jobhunt.md, contains: word-subsequence }
+    - { source: experience/fantastbiotech.md, contains: fabrication guardrails }
+- question: How did you keep each user's data separate?
+  expect:
+    - { source: experience/fantastbiotech.md, contains: row-level security }
+- question: How do you prevent SQL injection?
+  expect:
+    - { source: experience/siriusmindshare.md, contains: parameterized SQL }
+- question: Have you worked with messy legacy code?
+  expect:
+    - { source: experience/siriusmindshare.md, contains: legacy }
+    - { source: experience/siriusmindshare.md, contains: inherited }
+- question: Have you led a team?
+  expect:
+    - { source: projects/ornl-capstone.md, contains: team of three }
+    - { source: projects/ornl-capstone.md, contains: team lead }
+    - { source: instant.yaml, contains: team of three }
+
+# Projects and jobs by name.
+- question: What is ARC?
+  expect:
+    - { source: projects/arc.md, contains: Retrieval-augmented }
+- question: Tell me about the research assistant you built.
+  expect:
+    - { source: projects/arc.md, contains: 10,000 }
+    - { source: instant.yaml, contains: research assistant }
+- question: What was the grant?
+  expect:
+    - { source: projects/arc.md, contains: Burroughs Wellcome }
+    - { source: instant.yaml, contains: grant proposal }
+- question: What did you build at FantastBioTech?
+  expect:
+    - { source: experience/fantastbiotech.md, contains: content generator }
+    - { source: experience/fantastbiotech.md, contains: animal feed }
+- question: What results did the LinkedIn tool get?
+  expect:
+    - { source: experience/fantastbiotech.md, contains: 200% }
+- question: Why didn't the tool post to LinkedIn by itself?
+  expect:
+    - { source: experience/fantastbiotech.md, contains: copy-to-clipboard }
+- question: What did you do at SiriusMindShare?
+  expect:
+    - { source: experience/siriusmindshare.md, contains: SiriusMindShare }
+- question: Tell me about the Oak Ridge project.
+  expect:
+    - { source: projects/ornl-capstone.md, contains: Oak Ridge }
+- question: What is GrooveScope?
+  expect:
+    - { source: projects/peptide-design.md, contains: GrooveScope }
+- question: Have you made any games?
+  expect:
+    - { source: projects/fireproofsheep.md, contains: game }
+    - { source: earlier-projects.yaml, contains: memory game }
+- question: What frontend projects have you done?
+  expect:
+    - { source: earlier-projects.yaml, contains: frontend }
+    - { source: skills.yaml, contains: Frontend }
+- question: What are you working on right now?
+  expect:
+    - { source: instant.yaml, contains: working on right now }
+- question: Have you presented your research anywhere?
+  expect:
+    - { source: projects/arc.md, contains: poster }
+    - { source: about.md, contains: poster }
+
+# Background and logistics.
+- question: Where did you go to school?
+  expect:
+    - { source: about.md, contains: education }
+- question: What's your GPA?
+  expect:
+    - { source: about.md, contains: GPA 3.8 }
+- question: When do you graduate?
+  expect:
+    - { source: about.md, contains: January 2028 }
+    - { source: instant.yaml, contains: January 2028 }
+- question: Why did you study geology?
+  expect:
+    - { source: about.md, contains: geology }
+- question: Do you need visa sponsorship?
+  expect:
+    - { source: about.md, contains: sponsorship }
+- question: How can I contact you?
+  expect:
+    - { source: about.md, contains: Contact }
