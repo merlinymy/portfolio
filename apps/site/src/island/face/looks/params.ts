@@ -64,26 +64,35 @@ export const FLAME = {
 export type FlameSettings = ParamValues<typeof FLAME>;
 
 export const INK = {
-  // The ink
-  quality: { value: 0.5, min: 0.25, max: 1, step: 0.05, label: "resolution", hint: "Share of the screen's resolution the ink is worked out at. Lower is blurrier and faster." },
+  // The portrait: where the ink gathers to draw your face
+  quality: { value: 0.6, min: 0.25, max: 1, step: 0.05, label: "resolution", hint: "Share of the screen's resolution the ink is worked out at. Full keeps the finest wisps; lower is softer and faster." },
   inkColor: { value: "#ffffff", label: "ink color", hint: "The ink's color. White glows against the black water." },
-  amount: { value: 0.75, min: 0, max: 3, step: 0.05, label: "ink amount", hint: "How much ink the face gives off." },
-  thickness: { value: 1.4, min: 0.2, max: 8, step: 0.1, label: "thickness", hint: "How solid the ink looks: higher hides more of the water behind it." },
-  fade: { value: 4.5, min: 0.3, max: 15, step: 0.1, label: "fade time (s)", hint: "Seconds the ink takes to thin away into the water." },
-  edgeInk: { value: 0.8, min: 0, max: 2, step: 0.05, label: "edge ink", hint: "How much ink pours from the face's outline, eyes and lips." },
-  rimInk: { value: 0.35, min: 0, max: 2, step: 0.05, label: "rim ink", hint: "How much ink comes off the sides of the face, where it turns away from you." },
-  featureInk: { value: 0.45, min: 0, max: 2, step: 0.05, label: "feature ink", hint: "How much ink comes off the parts that move most: brows, eyelids, lips." },
-  faceInk: { value: 0.04, min: 0, max: 1, step: 0.01, label: "face wash", hint: "A thin veil of ink from the whole face, so its shape stays drawn." },
-  swirl: { value: 1.1, min: 0, max: 3, step: 0.01, label: "swirl", hint: "How strongly the water swirls the ink into eddies." },
-  swirlSize: { value: 2.8, min: 0.5, max: 10, step: 0.1, label: "swirl detail", hint: "Size of the eddies: higher makes smaller, busier curls." },
-  swirlSpeed: { value: 0.5, min: 0, max: 3, step: 0.05, label: "swirl speed", hint: "How quickly the swirling currents change." },
-  drift: { value: 0.012, min: -0.3, max: 0.3, step: 0.005, label: "drift", hint: "Slow current: above 0 the ink rises toward the surface and spreads under it, below 0 it sinks." },
-  momentum: { value: 0.8, min: 0, max: 4, step: 0.05, label: "momentum (s)", hint: "How long a push (the pointer, a click, your voice) keeps the water moving." },
-  softness: { value: 0.4, min: 0, max: 3, step: 0.05, label: "softness", hint: "How much the ink blurs into the water as it spreads." },
-  billow: { value: 1.6, min: 0, max: 4, step: 0.05, label: "billow", hint: "How rounded and lit from above the ink clouds look." },
-  glow: { value: 0.5, min: 0, max: 2, step: 0.05, label: "glow", hint: "Soft glow around the ink." },
-  faceShow: { value: 0.6, min: 0, max: 1, step: 0.01, label: "face visible", hint: "How much the submerged face itself shows under the ink. 0 leaves only the ink." },
-  faceLight: { value: 0.9, min: 0, max: 2, step: 0.05, label: "face light", hint: "Light from the surface on the submerged face." },
+  amount: { value: 0.9, min: 0, max: 3, step: 0.05, label: "ink amount", hint: "How much ink draws your face." },
+  portrait: { value: 1, min: 0, max: 3, step: 0.05, label: "portrait", hint: "How much ink gathers where light falls on your face (forehead, nose, cheekbones, lips). The hollows stay dark water." },
+  contrast: { value: 1.3, min: 0.3, max: 5, step: 0.05, label: "contrast", hint: "How sharply the lit parts stand out from the hollows. Higher leaves eye sockets and shadows emptier." },
+  lightAbove: { value: 30, min: -60, max: 80, step: 1, label: "light from above (°)", hint: "How high the light that shapes the portrait is. Higher lights the brow and nose and darkens under them." },
+  lightSide: { value: -8, min: -70, max: 70, step: 1, label: "light from the side (°)", hint: "How far to one side that light is. 0 is straight on; either side shades half the face." },
+  features: { value: 0.9, min: 0, max: 2, step: 0.05, label: "eyes and lips", hint: "Extra ink around your eyes and lips, so they stay readable as the ink drifts." },
+  liveliness: { value: 0.35, min: 0, max: 2, step: 0.05, label: "moving parts", hint: "Extra ink on the parts that move most: brows, eyelids, lips." },
+  outlineFade: { value: 0.9, min: 0, max: 1, step: 0.01, label: "outline fade", hint: "How softly the face fades out toward its outline, so no mask edge shows." },
+  grain: { value: 0.55, min: 0, max: 1, step: 0.01, label: "grain", hint: "Breaks the ink into uneven patches as it's laid down, so it looks dropped rather than painted." },
+  thickness: { value: 0.8, min: 0.1, max: 4, step: 0.05, label: "thickness", hint: "How solid the ink looks. Low keeps it thin and see-through; overlapping wisps add up." },
+  fade: { value: 5, min: 0.5, max: 20, step: 0.1, label: "fade time (s)", hint: "Seconds the ink takes to thin away into the water." },
+  // Steady face or drops
+  rhythm: { value: 0, min: 0, max: 1, step: 0.01, label: "rhythm", hint: "0: a steady face, always redrawn, with wisps drifting off it. 1: your face arrives as a drop of ink, blooms apart, then re-forms. In between mixes the two." },
+  dropEvery: { value: 7, min: 1, max: 20, step: 0.5, label: "drop every (s)", hint: "Seconds between drops, when rhythm is above 0." },
+  bloom: { value: 1, min: 0, max: 4, step: 0.05, label: "bloom", hint: "How hard each drop bursts outward as it blooms." },
+  // How the water moves the ink
+  swirl: { value: 1.2, min: 0, max: 4, step: 0.05, label: "swirl", hint: "How strongly the water curls the ink into eddies." },
+  swirlSize: { value: 3, min: 0.5, max: 12, step: 0.1, label: "swirl detail", hint: "Size of the eddies: higher makes smaller, busier curls." },
+  swirlSpeed: { value: 0.5, min: 0, max: 3, step: 0.05, label: "swirl speed", hint: "How quickly the currents change." },
+  spread: { value: 0.025, min: 0, max: 0.3, step: 0.005, label: "spread", hint: "How fast the ink unfurls outward from the face, evenly in every direction." },
+  drift: { value: 0, min: -0.3, max: 0.3, step: 0.005, label: "drift", hint: "An up or down current: above 0 the ink rises toward the surface, below 0 it sinks. 0 spreads evenly." },
+  momentum: { value: 0.8, min: 0, max: 4, step: 0.05, label: "momentum (s)", hint: "How long a push (the pointer, a click, a drop, your voice) keeps the water moving." },
+  sharpness: { value: 1, min: 0, max: 1, step: 0.01, label: "crispness", hint: "How crisp the fine wisps stay as they move. Lower lets them blur into haze." },
+  softness: { value: 0.1, min: 0, max: 2, step: 0.05, label: "diffusion", hint: "How much the ink blurs into the water on its own, like ink slowly dissolving." },
+  billow: { value: 0.7, min: 0, max: 4, step: 0.05, label: "billow", hint: "How rounded and lit from above the ink clouds look." },
+  glow: { value: 0.6, min: 0, max: 2, step: 0.05, label: "glow", hint: "Soft glow around the ink." },
   waterSpread: { value: 0.62, min: 0.3, max: 3, step: 0.05, label: "water spread", hint: "How far the water reaches out from the face, in screen heights, before fading into the page. Larger fills the whole view." },
   // The surface, seen from below
   surfaceHeight: { value: 0.155, min: 0.06, max: 0.3, step: 0.005, label: "surface height (m)", hint: "How far above the face the water's surface is. Lower brings the shimmering band further down the view." },
@@ -96,22 +105,19 @@ export const INK = {
   // Light under water
   shafts: { value: 0.6, min: 0, max: 2, step: 0.05, label: "light shafts", hint: "Brightness of the slanted beams of light coming down from the surface." },
   shaftSpeed: { value: 0.6, min: 0, max: 3, step: 0.05, label: "shaft speed", hint: "How fast the light shafts sway." },
-  caustics: { value: 0.8, min: 0, max: 3, step: 0.05, label: "caustics", hint: "Brightness of the moving net of light that the rippling surface casts on the ink and face." },
+  caustics: { value: 0.6, min: 0, max: 3, step: 0.05, label: "caustics", hint: "Brightness of the moving net of light that the rippling surface casts on the ink." },
   causticSize: { value: 1, min: 0.2, max: 4, step: 0.05, label: "caustic size", hint: "Size of the caustic net: higher is a finer net." },
   causticSpeed: { value: 1, min: 0, max: 4, step: 0.05, label: "caustic speed", hint: "How fast the caustic net moves." },
   waterColor: { value: "#03070d", label: "deep water color", hint: "The color of the water far away. Near black, with a hint of blue." },
   lightColor: { value: "#cfe8ff", label: "light color", hint: "The color of the light coming through the surface." },
-  // Particles
   specks: { value: 0.8, min: 0, max: 1, step: 0.01, label: "floating specks", hint: "Share of the tiny specks drifting in the water that catch the light. 0 turns them off." },
   speckSize: { value: 1, min: 0.2, max: 3, step: 0.05, label: "speck size", hint: "How big the floating specks are." },
-  bubbles: { value: 1, min: 0, max: 3, step: 0.05, label: "bubbles", hint: "How many bubbles rise from your mouth while speaking (and now and then otherwise)." },
-  bubbleSize: { value: 1, min: 0.2, max: 3, step: 0.05, label: "bubble size", hint: "How big the bubbles are." },
   // Reactions
-  puff: { value: 0.7, min: 0, max: 4, step: 0.05, label: "voice puff", hint: "How much ink and push your voice sends out of the mouth while speaking." },
+  puff: { value: 0.7, min: 0, max: 4, step: 0.05, label: "voice puff", hint: "How much ink your voice breathes out of the mouth while speaking." },
   pointerStir: { value: 1, min: 0, max: 4, step: 0.05, label: "pointer stir", hint: "How much moving the pointer stirs the water." },
   clickPush: { value: 1, min: 0, max: 4, step: 0.05, label: "click pulse", hint: "How hard a click pushes the ink outward from where it lands." },
   stateTint: { value: 0.6, min: 0, max: 1, step: 0.01, label: "state tint", hint: "How much the face state's color (State colors in the lab) tints the ink, for example red on a strike." },
-  eyeGlow: { value: 1.3, min: 0, max: 5, step: 0.05, label: "eye glow", hint: "Brightness of the glowing eye rings. 0 hides them." },
+  eyeGlow: { value: 0, min: 0, max: 5, step: 0.05, label: "eye rings", hint: "Brightness of the glowing eye rings over the ink. 0 hides them, leaving the ink to draw the eyes." },
 } as const satisfies Record<string, Param>;
 
 export type InkSettings = ParamValues<typeof INK>;

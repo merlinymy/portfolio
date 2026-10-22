@@ -1,18 +1,19 @@
 /**
- * The ink-in-water look (docs/face-looks-plan.md, "Ink in water"): an underwater view. The camera
- * looks level, just below the surface, so the surface shows from underneath along the top: a
- * rippling sheet that mirrors the ink below it, with flickers of light where a ripple lets the sky
- * through. Below it your face hangs in black water, pale and lit by caustics, and white ink billows
- * off it, curls into eddies and fades. Specks drift in the light shafts, and bubbles rise from your
- * mouth while you speak.
+ * The ink-in-water look (docs/face-looks-plan.md, "Ink in water"): your face drawn only in ink,
+ * seen underwater. The ink gathers where light falls on your face and around your eyes and lips,
+ * and keeps diffusing: thin wisps peel off and unfurl into the water while fresh ink redraws the
+ * face. "Rhythm" moves it between a steady face and drops: your face arriving as a drop of ink,
+ * blooming apart, then re-forming. The camera sits just below the surface, which shows along the
+ * top from underneath, mirroring the ink, with light shafts, caustics and drifting specks.
  *
  * Each frame:
- * 1. The face is drawn into a hidden picture of where it gives off ink: its open edges, the sides
- *    that turn away, the parts that move most, and a thin wash over the whole face.
- * 2. The water's state is fed back into itself: ink amount, how fresh it is, and the water's own
- *    movement. The movement is a swirling current plus pushes from the pointer, clicks and your
- *    voice, which carry on for a moment ("momentum"); the ink rides on it.
- * 3. On screen: the water and its surface, the submerged face, the ink, then specks and bubbles.
+ * 1. The face is drawn into a hidden picture of where its ink goes: its lit parts (a portrait in
+ *    light and shadow), its eyes and lips, fading out toward the outline, broken into grain.
+ * 2. The water's state (ink amount, how fresh it is, and the water's movement) is moved along the
+ *    water's own current in two steps. A first guess, then a correction: the guess is sent back
+ *    the other way and half the difference fixed, within the range it came from. That keeps fine
+ *    wisps crisp, where moving once would blur them a little every frame.
+ * 3. On screen: the water and its surface, then the ink, then the specks.
  */
 import {
   AdditiveBlending,
@@ -33,7 +34,6 @@ import {
 import { settings, type FaceState } from "../settings";
 import { createLookMaterial } from "../shaders";
 import {
-  FacePoints,
   type Look,
   type LookFrame,
   type LookParts,
@@ -43,14 +43,15 @@ import {
   hiddenPicture,
   lookSurface,
   openings,
+  ringWeights,
   screenUv,
 } from "./common";
 import { caustics, noise } from "./glsl";
 
+const DEG = Math.PI / 180;
 /** States that keep the ink its own color; the others tint it with their color. */
 const UNTINTED: FaceState[] = ["idle", "panel", "listening", "speaking"];
 const SPECK_COUNT = 1800;
-const BUBBLE_COUNT = 280;
 /** How long after a click its pulse keeps pushing, in seconds. */
 const CLICK_SECONDS = 0.6;
 
@@ -65,50 +66,65 @@ vec3 viewRay(vec2 uv) {
 }
 `;
 
-const sourceFragment = /* glsl */ `
-uniform float uTime, uEdgeInk, uRimInk, uFeatureInk, uFaceInk, uAmount;
+const portraitFragment = /* glsl */ `
+uniform float uTime, uPortrait, uContrast, uFeatures, uLiveliness, uOutlineFade, uGrain, uSeed, uAmount;
+uniform vec3 uLightDirection;
 varying vec3 vNormal, vView, vFace;
-varying float vExpressive, vEdge;
+varying float vExpressive, vEdge, vExtra;
 ${noise}
 void main() {
-  float facing = abs(dot(normalize(vNormal), normalize(-vView)));
-  float rim = pow(1.0 - facing, 2.0);
-  float grain = 0.55 + 0.45 * snoise(vec3(vFace.xy * 55.0, uTime * 0.5));
-  float ink = (vEdge * uEdgeInk + rim * uRimInk + vExpressive * uFeatureInk * 0.6 + uFaceInk) * grain * uAmount;
-  gl_FragColor = vec4(ink, 0.0, 0.0, 1.0);
+  vec3 n = normalize(vNormal);
+  vec3 v = normalize(-vView);
+  if (dot(n, v) < 0.0) n = -n;
+  // A portrait in light and shadow: ink where light falls, none in the hollows or where the face
+  // turns away.
+  float lit = pow(max(dot(n, uLightDirection), 0.0), uContrast);
+  float facing = smoothstep(0.0, 0.4, dot(n, v));
+  float ink = lit * uPortrait * facing + vEdge * uFeatures + vExpressive * uLiveliness * 0.5;
+  // vExtra is the distance from the outline here: 1 on it, so the face fades into the water.
+  ink *= 1.0 - vExtra * uOutlineFade;
+  // Grain: patchy, as if dropped rather than painted. Each drop gets its own pattern.
+  float g = 0.5 + 0.5 * fbm(vFace * 55.0 + vec3(0.0, 0.0, uSeed + uTime * 0.04));
+  ink *= mix(1.0, smoothstep(0.2, 0.8, g) * 1.7, uGrain);
+  gl_FragColor = vec4(ink * uAmount, 0.0, 0.0, 1.0);
 }
 `;
 
-const waterStateFragment = /* glsl */ `
-uniform sampler2D uPrev, uSource;
-uniform vec2 uTexel, uPointer, uPointerVelocity, uMouth;
+/** Step 1: the first guess at where everything moves, and the water's new movement. */
+const moveFragment = /* glsl */ `
+uniform sampler2D uState;
+uniform vec2 uTexel, uPointer, uPointerVelocity, uMouth, uCenter;
 uniform vec3 uClicks[3];
-uniform float uAspect, uDt, uTime, uSwirl, uSwirlSize, uSwirlSpeed, uDrift, uMomentum, uFade, uSoftness;
-uniform float uPointerStir, uClickPush, uPuff, uMouthRadius, uSurfaceLine, uCenterX;
+uniform float uAspect, uDt, uTime, uSwirl, uSwirlSize, uSwirlSpeed, uDrift, uSpread, uBloom, uMomentum, uSoftness;
+uniform float uPointerStir, uClickPush, uPuff, uMouthRadius, uSurfaceLine;
 varying vec2 vUv;
 ${noise}
 void main() {
   // Square units, one screen height tall, so eddies are round on any screen.
   vec2 q = vec2(vUv.x * uAspect, vUv.y);
-  vec2 velocity = texture2D(uPrev, vUv).ba;
-  vec2 from = vUv - vec2(velocity.x / uAspect, velocity.y) * uDt;
-  vec4 prev = texture2D(uPrev, from);
-  vec2 o = uTexel * uSoftness;
-  float ink = prev.r * 0.4
-    + (texture2D(uPrev, from + vec2(o.x, 0.0)).r + texture2D(uPrev, from - vec2(o.x, 0.0)).r
-    + texture2D(uPrev, from + vec2(0.0, o.y)).r + texture2D(uPrev, from - vec2(0.0, o.y)).r) * 0.15;
-  float fresh = prev.g;
+  vec4 here = texture2D(uState, vUv);
+  vec2 from = vUv - vec2(here.b / uAspect, here.a) * uDt;
+  vec4 prev = texture2D(uState, from);
+  vec2 carried = prev.rg;
+  if (uSoftness > 0.0) {
+    vec2 o = uTexel * uSoftness;
+    vec2 around = (texture2D(uState, from + vec2(o.x, 0.0)).rg + texture2D(uState, from - vec2(o.x, 0.0)).rg
+      + texture2D(uState, from + vec2(0.0, o.y)).rg + texture2D(uState, from - vec2(0.0, o.y)).rg) * 0.25;
+    carried = mix(carried, around, min(uSoftness, 1.0) * 0.6);
+  }
 
-  // The current: a swirling flow plus a slow drift. Just under the surface, rising water turns
-  // and spreads out sideways.
-  // Three sizes of swirl: broad currents, eddies, and fine wisps.
+  // The current: three sizes of swirl (broad currents, eddies, fine wisps), the ink unfurling
+  // outward from the face, an optional drift up or down, and a drop's burst as it blooms.
+  vec2 c = q - vec2(uCenter.x * uAspect, uCenter.y);
   vec2 current = (curl(q * uSwirlSize, uTime * uSwirlSpeed * 0.2)
     + curl(q * uSwirlSize * 2.7 + 3.1, uTime * uSwirlSpeed * 0.33) * 0.45
-    + curl(q * uSwirlSize * 6.3 + 7.7, uTime * uSwirlSpeed * 0.5) * 0.22)
-    * uSwirl * 0.025 + vec2(0.0, uDrift);
-  float under = smoothstep(uSurfaceLine - 0.1, uSurfaceLine, vUv.y);
+    + curl(q * uSwirlSize * 6.3 + 7.7, uTime * uSwirlSpeed * 0.5) * 0.22) * uSwirl * 0.025;
+  current += c * uSpread + vec2(0.0, uDrift);
+  current += normalize(c + 1e-5) * uBloom * exp(-dot(c, c) / 0.05);
+  // Just under the surface, water moving up turns and spreads sideways.
+  float under = smoothstep(uSurfaceLine - 0.08, uSurfaceLine, vUv.y);
+  current.x += sign(c.x) * under * max(current.y, 0.0);
   current.y *= 1.0 - under;
-  current.x += sign(q.x - uCenterX * uAspect) * under * max(uDrift, 0.0) * 1.5;
   // Pushes carry on for "momentum" seconds, then the current takes over again.
   float keep = uMomentum > 0.0 ? exp(-uDt / uMomentum) : 0.0;
   vec2 v = mix(current, prev.ba, keep);
@@ -118,33 +134,59 @@ void main() {
   v += uPointerVelocity * exp(-dot(d, d) / 0.005) * uPointerStir * uDt * 6.0;
   // A click sends a ring outward from where it landed.
   for (int i = 0; i < 3; i++) {
-    vec3 c = uClicks[i];
-    if (c.z >= 0.0 && c.z < ${CLICK_SECONDS.toFixed(2)}) {
-      vec2 e = q - vec2(c.x * uAspect, c.y);
-      float ring = exp(-pow((length(e) - c.z * 0.3) / 0.045, 2.0));
-      v += normalize(e + 1e-5) * ring * uClickPush * 3.0 * uDt * (1.0 - c.z / ${CLICK_SECONDS.toFixed(2)});
+    vec3 k = uClicks[i];
+    if (k.z >= 0.0 && k.z < ${CLICK_SECONDS.toFixed(2)}) {
+      vec2 e = q - vec2(k.x * uAspect, k.y);
+      float ring = exp(-pow((length(e) - k.z * 0.3) / 0.045, 2.0));
+      v += normalize(e + 1e-5) * ring * uClickPush * 3.0 * uDt * (1.0 - k.z / ${CLICK_SECONDS.toFixed(2)});
     }
   }
-  // Your voice puffs ink out of the mouth, pushing it down and sideways, away from the face.
+  // Your voice breathes ink out of the mouth, pushing it outward.
   vec2 m = q - vec2(uMouth.x * uAspect, uMouth.y);
   float mouth = exp(-dot(m, m) / max(uMouthRadius * uMouthRadius, 1e-6));
-  v += normalize(vec2(m.x, min(m.y, 0.0) - 0.02)) * mouth * uPuff * 3.5 * uDt;
-  ink += mouth * uPuff * 0.7 * uDt;
-  fresh = max(fresh, mouth * min(uPuff, 1.0));
-  v = clamp(v, -1.5, 1.5);
+  v += normalize(m + 1e-5) * mouth * uPuff * 2.5 * uDt;
+  gl_FragColor = vec4(carried, clamp(v, -1.5, 1.5));
+}
+`;
 
-  ink *= exp(-uDt / max(uFade, 0.01));
-  fresh *= exp(-uDt / max(uFade * 0.3, 0.01));
-  // The face keeps drawing ink where it is.
-  float source = texture2D(uSource, vUv).r;
-  ink = max(ink, source);
-  fresh = max(fresh, clamp(source * 2.0, 0.0, 1.0));
-  gl_FragColor = vec4(ink, fresh, v);
+/** Step 2: correct the guess, fade, then lay down fresh ink. */
+const settleFragment = /* glsl */ `
+uniform sampler2D uState, uGuess, uPortrait;
+uniform vec2 uTexel, uMouth;
+uniform float uAspect, uDt, uSharpness, uFade, uInject, uPuff, uMouthRadius;
+varying vec2 vUv;
+void main() {
+  vec4 before = texture2D(uState, vUv);
+  vec4 guess = texture2D(uGuess, vUv);
+  vec2 stride = vec2(before.b / uAspect, before.a) * uDt;
+  // Send the guess back the other way; whatever doesn't land where it started is the error.
+  vec2 returned = texture2D(uGuess, vUv + stride).rg;
+  vec2 corrected = guess.rg + 0.5 * (before.rg - returned) * uSharpness;
+  // Stay within the values the guess came from, so the correction can't overshoot into ripples.
+  vec2 from = vUv - stride;
+  vec2 h = uTexel * 0.5;
+  vec2 a = texture2D(uState, from + vec2(-h.x, -h.y)).rg;
+  vec2 b = texture2D(uState, from + vec2(h.x, -h.y)).rg;
+  vec2 c = texture2D(uState, from + vec2(-h.x, h.y)).rg;
+  vec2 d = texture2D(uState, from + vec2(h.x, h.y)).rg;
+  corrected = clamp(corrected, min(min(a, b), min(c, d)), max(max(a, b), max(c, d)));
+
+  float ink = corrected.r * exp(-uDt / max(uFade, 0.01));
+  float fresh = corrected.g * exp(-uDt / max(uFade * 0.3, 0.01));
+  vec2 m = vec2((vUv.x - uMouth.x) * uAspect, vUv.y - uMouth.y);
+  float mouth = exp(-dot(m, m) / max(uMouthRadius * uMouthRadius, 1e-6));
+  ink += mouth * uPuff * 0.6 * uDt;
+  fresh = max(fresh, mouth * min(uPuff, 1.0));
+  // The portrait: fresh ink where the face is (steadily, or in drops).
+  float laid = texture2D(uPortrait, vUv).r * uInject;
+  ink = max(ink, laid);
+  fresh = max(fresh, clamp(laid * 2.0, 0.0, 1.0));
+  gl_FragColor = vec4(ink, fresh, guess.ba);
 }
 `;
 
 const waterFragment = /* glsl */ `
-uniform sampler2D uState, uSource;
+uniform sampler2D uState;
 uniform mat4 uViewProjection;
 uniform float uTime, uSurfaceY, uReach, uWaveSize, uWaveSpeed, uWaveTilt, uShimmer, uMirror;
 uniform float uShafts, uShaftSpeed, uThickness, uAspect, uSpread;
@@ -202,8 +244,7 @@ void main() {
       vec4 clip = uViewProjection * vec4(seen, 1.0);
       vec2 uv = clip.xy / clip.w * 0.5 + 0.5;
       if (uv.x > 0.0 && uv.x < 1.0 && uv.y > 0.0 && uv.y < 1.0) {
-        float ink = texture2D(uState, uv).r;
-        mirror += uInkColor * (1.0 - exp(-ink * uThickness)) * 0.75 + vec3(0.2, 0.24, 0.28) * texture2D(uSource, uv).a * 0.25;
+        mirror += uInkColor * (1.0 - exp(-texture2D(uState, uv).r * uThickness)) * 0.75;
       }
     }
     vec3 surface = mirror * uMirror + uLightColor * (0.05 + pow(through, 2.0) * 1.4 * uShimmer);
@@ -221,30 +262,6 @@ void main() {
 }
 `;
 
-const faceFragment = /* glsl */ `
-uniform float uTime, uFaceShow, uFaceLight, uCaustics, uCausticSize, uCausticSpeed;
-uniform vec3 uLightColor, uWaterColor;
-varying vec3 vNormal, vView, vFace;
-${noise}
-${caustics}
-void main() {
-  vec3 n = normalize(vNormal);
-  vec3 v = normalize(-vView);
-  if (dot(n, v) < 0.0) n = -n;
-  // Light comes down through the surface, rippling into caustics on the skin.
-  float above = max(dot(n, normalize(vec3(-0.2, 0.85, 0.45))), 0.0);
-  float c = caustic(vec2(vFace.x, vFace.z + vFace.y * 0.3) * 40.0 * uCausticSize, uTime * 0.5 * uCausticSpeed);
-  float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);
-  vec3 skin = vec3(0.42, 0.52, 0.62);
-  vec3 color = skin * uLightColor * (0.05 + above * uFaceLight * 0.5)
-    + uLightColor * c * above * uCaustics * 0.35
-    + uLightColor * rim * 0.12;
-  // Water between you and the face takes a little of its light.
-  color = mix(uWaterColor, color, 0.85);
-  gl_FragColor = vec4(color * uFaceShow, uFaceShow);
-}
-`;
-
 const inkFragment = /* glsl */ `
 uniform sampler2D uState;
 uniform vec2 uTexel;
@@ -257,7 +274,7 @@ ${viewRay}
 void main() {
   vec4 state = texture2D(uState, vUv);
   float ink = state.r;
-  // The ink's slopes give it a surface to light, so it billows like cloud lit from above.
+  // The ink's slopes give it a surface to light, so thicker parts billow, lit from above.
   vec2 o = uTexel * 2.0;
   float dx = texture2D(uState, vUv + vec2(o.x, 0.0)).r - texture2D(uState, vUv - vec2(o.x, 0.0)).r;
   float dy = texture2D(uState, vUv + vec2(0.0, o.y)).r - texture2D(uState, vUv - vec2(0.0, o.y)).r;
@@ -268,19 +285,20 @@ void main() {
   vec3 w = uCameraPosition + dir * (-uCameraPosition.z / dir.z);
   float c = caustic(w.xy * 28.0 * uCausticSize, uTime * 0.5 * uCausticSpeed);
   vec3 color = mix(uInkColor, uTint, uTintAmount);
+  // Thin ink is see-through; overlapping wisps add up.
   float cover = 1.0 - exp(-ink * uThickness);
-  vec3 lit = color * (0.3 + 0.9 * light) * (1.0 + c * uCaustics * 0.35);
-  // Thin ink cools toward the water's blue; fresh ink is the brightest.
-  lit = mix(lit * vec3(0.55, 0.7, 0.92), lit, smoothstep(0.05, 0.6, cover)) * (0.85 + 0.35 * state.g);
+  vec3 lit = color * (0.45 + 0.75 * light) * (1.0 + c * uCaustics * 0.35);
+  // The thinnest wisps cool toward the water's blue; fresh ink is the brightest.
+  lit = mix(lit * vec3(0.6, 0.72, 0.92), lit, smoothstep(0.02, 0.5, cover)) * (0.8 + 0.4 * state.g);
   float glow = 0.0;
   for (int i = 0; i < 8; i++) {
     float a = float(i) * 0.7854;
     vec2 ring = vec2(cos(a), sin(a));
-    glow += texture2D(uState, vUv + ring * uTexel * 9.0).r + 0.6 * texture2D(uState, vUv + ring * uTexel * 22.0).r;
+    glow += texture2D(uState, vUv + ring * uTexel * 9.0).r + 0.6 * texture2D(uState, vUv + ring * uTexel * 24.0).r;
   }
   glow = 1.0 - exp(-glow / 12.8 * uThickness);
-  vec3 shown = lit * cover + color * glow * uGlow * 0.3;
-  float alpha = clamp(cover + glow * uGlow * 0.08, 0.0, 1.0);
+  vec3 shown = lit * cover + color * glow * uGlow * 0.25;
+  float alpha = clamp(cover * 0.9 + glow * uGlow * 0.05, 0.0, 1.0);
   gl_FragColor = vec4(1.0 - exp(-shown * 1.2), alpha);
 }
 `;
@@ -317,78 +335,13 @@ void main() {
 }
 `;
 
-const bubbleVertex = /* glsl */ `
-uniform sampler2D uFacePoints;
-uniform float uFaceCount, uTime, uScale, uSize, uSpeech, uTrickle, uSurfaceY, uMouthSize;
-uniform mat4 uHead;
-uniform vec3 uMouth;
-attribute vec3 aRandom;
-varying float vShown;
-float hash(float n) { return fract(sin(n) * 43758.5453); }
-void main() {
-  float life = mix(2.5, 4.5, aRandom.x);
-  float clock = uTime + aRandom.y * life;
-  float cycle = floor(clock / life);
-  float age = fract(clock / life);
-  float s = age * life;
-  // Most bubbles come out of the mouth while speaking; now and then one rises off the face.
-  float fromMouth = step(hash(cycle * 1.7 + aRandom.z * 31.0), uSpeech);
-  float trickle = step(hash(cycle * 5.3 + aRandom.x * 17.0), uTrickle);
-  vec3 start;
-  if (fromMouth > 0.5) {
-    start = uMouth + (vec3(hash(cycle + aRandom.x * 3.0), hash(cycle * 2.0 + aRandom.y), hash(cycle * 3.0 + aRandom.z)) - 0.5) * uMouthSize;
-  } else {
-    float pick = floor(hash(aRandom.z * 77.0 + cycle) * uFaceCount);
-    start = (uHead * vec4(texture2D(uFacePoints, vec2((pick + 0.5) / uFaceCount, 0.5)).xyz, 1.0)).xyz;
-  }
-  float radius = mix(0.0008, 0.0026, aRandom.z) * uSize;
-  vec3 p = start;
-  // Bigger bubbles rise faster, and every bubble wobbles as it goes.
-  p.y += s * (0.045 + radius * 14.0);
-  p.x += sin(s * 6.0 + aRandom.x * 20.0) * radius * 1.8 + s * 0.004 * (aRandom.y - 0.5);
-  p.z += cos(s * 5.0 + aRandom.y * 20.0) * radius;
-  float alive = max(fromMouth, trickle) * step(p.y, uSurfaceY) * smoothstep(0.0, 0.08, age);
-  vec4 mv = modelViewMatrix * vec4(p, 1.0);
-  gl_Position = projectionMatrix * mv;
-  gl_PointSize = max(1.0, radius * 2.0 * uScale / -mv.z) * step(0.001, alive);
-  vShown = alive * smoothstep(uSurfaceY, uSurfaceY - 0.015, p.y);
-}
-`;
-
-const bubbleFragment = /* glsl */ `
-uniform vec3 uLightColor;
-varying float vShown;
-void main() {
-  vec2 c = gl_PointCoord - 0.5;
-  float d = length(c);
-  if (d > 0.5) discard;
-  // A bubble is mostly see-through: a bright rim where light bends around its edge, and a glint.
-  float rim = smoothstep(0.3, 0.46, d) * (1.0 - smoothstep(0.46, 0.5, d));
-  float glint = smoothstep(0.12, 0.0, length(c - vec2(-0.15, -0.15)));
-  float body = 0.06;
-  float a = clamp(rim * 0.8 + glint + body, 0.0, 1.0) * vShown;
-  gl_FragColor = vec4(uLightColor * (rim * 0.9 + glint * 1.2 + body) * vShown, a);
-}
-`;
-
-function randoms(count: number) {
-  const values = new Float32Array(count * 3);
-  for (let i = 0; i < values.length; i++) values[i] = Math.random();
-  return values;
-}
-
-function particles(count: number) {
-  const geometry = new BufferGeometry();
-  geometry.setAttribute("position", new BufferAttribute(new Float32Array(count * 3), 3));
-  geometry.setAttribute("aRandom", new BufferAttribute(randoms(count), 3));
-  return geometry;
-}
-
 export function createInk(parts: LookParts): Look {
   const uniforms = parts.scene.uniforms;
   const surface = lookSurface(parts);
-  const mouthPoints = openings(parts.data).mouth;
-  const facePoints = new FacePoints(parts);
+  // The portrait fades out toward the face's outline, and picks out the eyes and lips.
+  const holes = openings(parts.data);
+  surface.setAttribute("aExtra", new BufferAttribute(ringWeights(parts.data, holes.outline, 7), 1));
+  surface.setAttribute("aEdge", new BufferAttribute(ringWeights(parts.data, [...holes.mouth, ...holes.eyes.flat()], 3), 1));
 
   // Shared by several of the shaders below; updated every frame.
   const camera = {
@@ -408,36 +361,42 @@ export function createInk(parts: LookParts): Look {
     uCausticSize: { value: 1 },
     uCausticSpeed: { value: 1 },
   };
-  const surfaceY = { value: 0.135 };
-  const thickness = { value: 2 };
+  const surfaceY = { value: 0.155 };
+  const thickness = { value: 1 };
+  const mouthAt = { uMouth: { value: new Vector2(-1, -1) }, uMouthRadius: { value: 0.05 } };
+  const puff = { value: 0 };
   // See-through materials whose colors are already multiplied by their opacity.
   const layered = { transparent: true, premultipliedAlpha: true, blending: NormalBlending, depthWrite: false };
 
-  // 1. Where the face gives off ink.
-  const sourceMaterial = createLookMaterial(uniforms, sourceFragment, {
-    uEdgeInk: { value: 1 },
-    uRimInk: { value: 1 },
-    uFeatureInk: { value: 1 },
-    uFaceInk: { value: 0 },
+  // 1. Where the face's ink goes: the portrait.
+  const portraitMaterial = createLookMaterial(uniforms, portraitFragment, {
+    uPortrait: { value: 1 },
+    uContrast: { value: 1 },
+    uFeatures: { value: 1 },
+    uLiveliness: { value: 0 },
+    uOutlineFade: { value: 1 },
+    uGrain: { value: 0 },
+    uSeed: { value: 0 },
     uAmount: { value: 0 },
+    uLightDirection: { value: new Vector3(0, 0, 1) },
   });
-  const sourceScene = new Scene();
-  const sourceMesh = new Mesh(surface, sourceMaterial);
-  sourceMesh.frustumCulled = false;
-  sourceScene.add(sourceMesh);
+  const portraitScene = new Scene();
+  const portraitMesh = new Mesh(surface, portraitMaterial);
+  portraitMesh.frustumCulled = false;
+  portraitScene.add(portraitMesh);
 
-  // 2. The water's state, fed back into itself.
-  const state = new Pass(
+  // 2. The water's state, moved in two steps.
+  const move = new Pass(
     new ShaderMaterial({
       vertexShader: fullscreenVertex,
-      fragmentShader: waterStateFragment,
+      fragmentShader: moveFragment,
       uniforms: {
-        uPrev: { value: null },
-        uSource: { value: null },
+        ...mouthAt,
+        uState: { value: null },
         uTexel: { value: new Vector2() },
         uPointer: { value: new Vector2(-1, -1) },
         uPointerVelocity: { value: new Vector2() },
-        uMouth: { value: new Vector2(-1, -1) },
+        uCenter: { value: new Vector2(0.5, 0.5) },
         uClicks: { value: [new Vector3(0, 0, -1), new Vector3(0, 0, -1), new Vector3(0, 0, -1)] },
         uAspect: { value: 1 },
         uDt: { value: 0 },
@@ -446,21 +405,41 @@ export function createInk(parts: LookParts): Look {
         uSwirlSize: { value: 1 },
         uSwirlSpeed: { value: 1 },
         uDrift: { value: 0 },
+        uSpread: { value: 0 },
+        uBloom: { value: 0 },
         uMomentum: { value: 1 },
-        uFade: { value: 1 },
-        uSoftness: { value: 1 },
+        uSoftness: { value: 0 },
         uPointerStir: { value: 0 },
         uClickPush: { value: 0 },
-        uPuff: { value: 0 },
-        uMouthRadius: { value: 0.05 },
+        uPuff: puff,
         uSurfaceLine: { value: 0.9 },
-        uCenterX: { value: 0.5 },
       },
       depthTest: false,
       depthWrite: false,
     }),
   );
-  let pictures: { source: WebGLRenderTarget; a: WebGLRenderTarget; b: WebGLRenderTarget } | undefined;
+  const settle = new Pass(
+    new ShaderMaterial({
+      vertexShader: fullscreenVertex,
+      fragmentShader: settleFragment,
+      uniforms: {
+        ...mouthAt,
+        uState: { value: null },
+        uGuess: { value: null },
+        uPortrait: { value: null },
+        uTexel: { value: new Vector2() },
+        uAspect: { value: 1 },
+        uDt: { value: 0 },
+        uSharpness: { value: 1 },
+        uFade: { value: 1 },
+        uInject: { value: 1 },
+        uPuff: puff,
+      },
+      depthTest: false,
+      depthWrite: false,
+    }),
+  );
+  let pictures: { portrait: WebGLRenderTarget; guess: WebGLRenderTarget; a: WebGLRenderTarget; b: WebGLRenderTarget } | undefined;
   let pictureKey = "";
 
   // 3. On screen, back to front.
@@ -471,7 +450,6 @@ export function createInk(parts: LookParts): Look {
       ...camera,
       ...colors,
       uState: { value: null },
-      uSource: { value: null },
       uViewProjection: { value: new Matrix4() },
       uTime: uniforms.uTime,
       uSurfaceY: surfaceY,
@@ -494,16 +472,6 @@ export function createInk(parts: LookParts): Look {
   const water = fullscreen(waterMaterial);
   water.renderOrder = -10;
 
-  const faceMaterial = createLookMaterial(
-    uniforms,
-    faceFragment,
-    { ...colors, ...light, uFaceShow: { value: 0.5 }, uFaceLight: { value: 1 } },
-    { ...layered, depthWrite: true },
-  );
-  const face = new Mesh(surface, faceMaterial);
-  face.frustumCulled = false;
-  face.renderOrder = 1;
-
   const inkMaterial = new ShaderMaterial({
     vertexShader: fullscreenVertex,
     fragmentShader: inkFragment,
@@ -525,7 +493,11 @@ export function createInk(parts: LookParts): Look {
   ink.renderOrder = 2;
 
   // Specks glow, so they add their light to whatever is behind them.
-  const speckGeometry = particles(SPECK_COUNT);
+  const speckGeometry = new BufferGeometry();
+  const randoms = new Float32Array(SPECK_COUNT * 3);
+  for (let i = 0; i < randoms.length; i++) randoms[i] = Math.random();
+  speckGeometry.setAttribute("position", new BufferAttribute(new Float32Array(SPECK_COUNT * 3), 3));
+  speckGeometry.setAttribute("aRandom", new BufferAttribute(randoms, 3));
   const speckMaterial = new ShaderMaterial({
     vertexShader: speckVertex,
     fragmentShader: speckFragment,
@@ -546,37 +518,13 @@ export function createInk(parts: LookParts): Look {
   specks.frustumCulled = false;
   specks.renderOrder = 3;
 
-  const bubbleGeometry = particles(BUBBLE_COUNT);
-  const bubbleMaterial = new ShaderMaterial({
-    vertexShader: bubbleVertex,
-    fragmentShader: bubbleFragment,
-    uniforms: {
-      ...colors,
-      uFacePoints: { value: facePoints.texture },
-      uFaceCount: { value: facePoints.count },
-      uTime: uniforms.uTime,
-      uScale: uniforms.uScale,
-      uHead: uniforms.uHead,
-      uSize: { value: 1 },
-      uSpeech: { value: 0 },
-      uTrickle: { value: 0 },
-      uSurfaceY: surfaceY,
-      uMouth: { value: new Vector3() },
-      uMouthSize: { value: 0.02 },
-    },
-    ...layered,
-  });
-  const bubbles = new Points(bubbleGeometry, bubbleMaterial);
-  bubbles.frustumCulled = false;
-  bubbles.renderOrder = 4;
-
   const object = new Group();
-  object.add(water, face, ink, specks, bubbles);
+  object.add(water, ink, specks);
 
   const pointer = { uv: new Vector2(-1, -1), velocity: new Vector2(), seen: false };
   const scratch = {
     v: new Vector3(),
-    edge: new Vector3(),
+    point: new Vector3(),
     uv: new Vector2(),
     other: new Vector2(),
     move: new Vector2(),
@@ -594,7 +542,7 @@ export function createInk(parts: LookParts): Look {
     const key = `${w}x${h}`;
     if (key === pictureKey && pictures) return pictures;
     if (pictures) for (const t of Object.values(pictures)) t.dispose();
-    pictures = { source: hiddenPicture(w, h), a: hiddenPicture(w, h), b: hiddenPicture(w, h) };
+    pictures = { portrait: hiddenPicture(w, h), guess: hiddenPicture(w, h), a: hiddenPicture(w, h), b: hiddenPicture(w, h) };
     pictureKey = key;
     for (const t of [pictures.a, pictures.b]) {
       frame.gl.setRenderTarget(t);
@@ -631,6 +579,7 @@ export function createInk(parts: LookParts): Look {
       light.uCausticSpeed.value = f.causticSpeed * calm;
       surfaceY.value = f.surfaceHeight;
       thickness.value = f.thickness;
+      puff.value = f.puff * frame.loudness;
 
       cam.updateMatrixWorld();
       camera.uInverseProjection.value.copy(cam.projectionMatrixInverse);
@@ -653,69 +602,90 @@ export function createInk(parts: LookParts): Look {
       }
       pointer.velocity.clampLength(0, 3);
 
-      // The mouth: its middle (turned with the head) and size on screen, for the voice's puffs.
+      // The mouth: its middle (turned with the head) and size on screen, for the voice.
       scratch.v.set(0, 0, 0);
-      for (const i of mouthPoints) scratch.v.add(scratch.edge.fromArray(frame.positions, i * 3));
-      scratch.v.divideScalar(Math.max(1, mouthPoints.length));
+      for (const i of holes.mouth) scratch.v.add(scratch.point.fromArray(frame.positions, i * 3));
+      scratch.v.divideScalar(Math.max(1, holes.mouth.length));
       let mouthSize = 0;
-      for (const i of mouthPoints) mouthSize = Math.max(mouthSize, scratch.edge.fromArray(frame.positions, i * 3).distanceTo(scratch.v));
+      for (const i of holes.mouth) mouthSize = Math.max(mouthSize, scratch.point.fromArray(frame.positions, i * 3).distanceTo(scratch.v));
       scratch.v.applyMatrix4(frame.headMatrix);
-      const su = state.material.uniforms;
       const mouthUv = screenUv(scratch.v, cam, scratch.uv);
-      su.uMouth.value.copy(mouthUv);
-      screenUv(scratch.edge.copy(scratch.v).setX(scratch.v.x + Math.max(mouthSize, 0.01) * 0.7), cam, scratch.other);
-      su.uMouthRadius.value = Math.abs(scratch.other.x - mouthUv.x) * aspect;
-      bubbleMaterial.uniforms.uMouth.value.copy(scratch.v);
-      bubbleMaterial.uniforms.uMouthSize.value = Math.max(mouthSize, 0.01) * 1.2;
+      mouthAt.uMouth.value.copy(mouthUv);
+      screenUv(scratch.point.copy(scratch.v).setX(scratch.v.x + Math.max(mouthSize, 0.01) * 0.7), cam, scratch.other);
+      mouthAt.uMouthRadius.value = Math.abs(scratch.other.x - mouthUv.x) * aspect;
 
       // Where the surface meets the face's plane on screen, and the face's middle.
-      su.uSurfaceLine.value = screenUv(scratch.edge.set(0, f.surfaceHeight, 0), cam, scratch.other).y;
-      const center = screenUv(scratch.edge.set(0, 0, 0).applyMatrix4(frame.headMatrix), cam, scratch.other);
-      su.uCenterX.value = center.x;
+      const mu = move.material.uniforms;
+      mu.uSurfaceLine.value = screenUv(scratch.point.set(0, f.surfaceHeight, 0), cam, scratch.other).y;
+      const center = screenUv(scratch.point.set(0, 0, 0).applyMatrix4(frame.headMatrix), cam, scratch.other);
+      mu.uCenter.value.copy(center);
       waterMaterial.uniforms.uCenter.value.copy(center);
 
       // Clicks: the face's ripples (Face.tsx) start where a click lands; each sends out a pulse.
       uniforms.uRipples.value.forEach((r, i) => {
         const age = frame.now - r.w;
-        const slot = su.uClicks.value[i];
+        const slot = mu.uClicks.value[i];
         if (r.w < 0 || age < 0 || age > CLICK_SECONDS) slot.set(0, 0, -1);
         else {
-          const at = screenUv(scratch.edge.set(r.x, r.y, r.z).applyMatrix4(frame.headMatrix), cam, scratch.other);
+          const at = screenUv(scratch.point.set(r.x, r.y, r.z).applyMatrix4(frame.headMatrix), cam, scratch.other);
           slot.set(at.x, at.y, age);
         }
       });
 
-      // 1. Where the face gives off ink.
-      facePoints.update(frame.positions);
-      const ou = sourceMaterial.uniforms;
-      ou.uEdgeInk.value = f.edgeInk;
-      ou.uRimInk.value = f.rimInk;
-      ou.uFeatureInk.value = f.featureInk;
-      ou.uFaceInk.value = f.faceInk;
-      ou.uAmount.value = f.amount * frame.intro * frame.brightness;
-      gl.setRenderTarget(p.source);
-      gl.clear();
-      gl.render(sourceScene, cam);
+      // Rhythm: between a steady face and drops. Right after a drop, ink lands strongly and bursts
+      // outward; between drops, only the steady share keeps the face drawn.
+      const period = Math.max(1, f.dropEvery);
+      const sinceDrop = frame.now % period;
+      const drop = Math.exp(-sinceDrop / 0.35);
+      const inject = 1 - f.rhythm + f.rhythm * drop * 1.6;
+      const bloom = f.rhythm * f.bloom * Math.exp(-sinceDrop / 0.9) * 0.25;
 
-      // 2. The water's state: read one picture, write the other, then swap.
-      su.uPrev.value = p.a.texture;
-      su.uSource.value = p.source.texture;
+      // 1. The portrait.
+      const pu = portraitMaterial.uniforms;
+      pu.uPortrait.value = f.portrait;
+      pu.uContrast.value = f.contrast;
+      pu.uFeatures.value = f.features;
+      pu.uLiveliness.value = f.liveliness;
+      pu.uOutlineFade.value = f.outlineFade;
+      pu.uGrain.value = f.grain;
+      pu.uSeed.value = Math.floor(frame.now / period) * 7.13;
+      pu.uAmount.value = f.amount * frame.intro * frame.brightness;
+      const above = f.lightAbove * DEG;
+      const side = f.lightSide * DEG;
+      pu.uLightDirection.value.set(Math.sin(side) * Math.cos(above), Math.sin(above), Math.cos(side) * Math.cos(above));
+      gl.setRenderTarget(p.portrait);
+      gl.clear();
+      gl.render(portraitScene, cam);
+
+      // 2. Move the water's state: a first guess, then the correction; then swap.
+      mu.uState.value = p.a.texture;
+      mu.uTexel.value.set(1 / p.a.width, 1 / p.a.height);
+      mu.uPointer.value.copy(pointer.uv);
+      mu.uPointerVelocity.value.copy(pointer.velocity);
+      mu.uAspect.value = aspect;
+      mu.uDt.value = dt;
+      mu.uSwirl.value = f.swirl;
+      mu.uSwirlSize.value = f.swirlSize;
+      mu.uSwirlSpeed.value = f.swirlSpeed * calm;
+      mu.uDrift.value = f.drift * calm;
+      mu.uSpread.value = f.spread * calm;
+      mu.uBloom.value = bloom * calm;
+      mu.uMomentum.value = f.momentum;
+      mu.uSoftness.value = f.softness;
+      mu.uPointerStir.value = f.pointerStir;
+      mu.uClickPush.value = f.clickPush;
+      move.render(gl, p.guess);
+      const su = settle.material.uniforms;
+      su.uState.value = p.a.texture;
+      su.uGuess.value = p.guess.texture;
+      su.uPortrait.value = p.portrait.texture;
       su.uTexel.value.set(1 / p.a.width, 1 / p.a.height);
-      su.uPointer.value.copy(pointer.uv);
-      su.uPointerVelocity.value.copy(pointer.velocity);
       su.uAspect.value = aspect;
       su.uDt.value = dt;
-      su.uSwirl.value = f.swirl;
-      su.uSwirlSize.value = f.swirlSize;
-      su.uSwirlSpeed.value = f.swirlSpeed * calm;
-      su.uDrift.value = f.drift * calm;
-      su.uMomentum.value = f.momentum;
+      su.uSharpness.value = f.sharpness;
       su.uFade.value = f.fade;
-      su.uSoftness.value = f.softness;
-      su.uPointerStir.value = f.pointerStir;
-      su.uClickPush.value = f.clickPush;
-      su.uPuff.value = f.puff * frame.loudness;
-      state.render(gl, p.b);
+      su.uInject.value = inject;
+      settle.render(gl, p.b);
       [p.a, p.b] = [p.b, p.a];
       gl.setRenderTarget(null);
       gl.setClearColor(scratch.clear, clearAlpha);
@@ -723,7 +693,6 @@ export function createInk(parts: LookParts): Look {
       // 3. On screen.
       const wu = waterMaterial.uniforms;
       wu.uState.value = p.a.texture;
-      wu.uSource.value = p.source.texture;
       wu.uViewProjection.value.copy(scratch.viewProjection);
       wu.uReach.value = f.surfaceReach;
       wu.uAspect.value = aspect;
@@ -736,9 +705,6 @@ export function createInk(parts: LookParts): Look {
       wu.uShafts.value = f.shafts * frame.brightness;
       wu.uShaftSpeed.value = f.shaftSpeed * calm;
 
-      faceMaterial.uniforms.uFaceShow.value = f.faceShow * frame.intro;
-      faceMaterial.uniforms.uFaceLight.value = f.faceLight * frame.brightness;
-
       const iu = inkMaterial.uniforms;
       iu.uState.value = p.a.texture;
       iu.uTexel.value.set(1 / p.a.width, 1 / p.a.height);
@@ -747,24 +713,19 @@ export function createInk(parts: LookParts): Look {
 
       speckMaterial.uniforms.uShare.value = f.specks;
       speckMaterial.uniforms.uSize.value = f.speckSize;
-      const bu = bubbleMaterial.uniforms;
-      bu.uSize.value = f.bubbleSize;
-      bu.uSpeech.value = frame.reduced ? 0 : Math.min(1, frame.loudness * f.bubbles * 0.8);
-      bu.uTrickle.value = frame.reduced ? 0 : f.bubbles * 0.02;
 
-      // Eyes: bright rings, in the ink's color.
+      // Eye rings are off unless asked for: the ink draws the eyes.
       eyes.glow = f.eyeGlow * frame.intro;
       eyes.color.copy(colors.uInkColor.value).lerp(colors.uTint.value, colors.uTintAmount.value);
     },
     dispose() {
       if (pictures) for (const t of Object.values(pictures)) t.dispose();
-      state.dispose();
-      sourceMaterial.dispose();
+      move.dispose();
+      settle.dispose();
+      portraitMaterial.dispose();
       for (const m of [water, ink]) m.geometry.dispose();
-      for (const m of [waterMaterial, faceMaterial, inkMaterial, speckMaterial, bubbleMaterial]) m.dispose();
+      for (const m of [waterMaterial, inkMaterial, speckMaterial]) m.dispose();
       speckGeometry.dispose();
-      bubbleGeometry.dispose();
-      facePoints.dispose();
     },
   };
 }

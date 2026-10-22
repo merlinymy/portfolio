@@ -87,32 +87,34 @@ function expressiveness(data: FaceData): Float32Array {
   return total.map((v) => Math.min(1, v / top));
 }
 
-/**
- * 1 on the scan's open edges (its outline and the openings at the eyes and lips), fading to 0 over
- * `rings` steps of neighbouring points inward. An edge is open where only one triangle uses it.
- */
-function edgeness(triangles: Uint16Array, count: number, rings = 4): Float32Array {
-  const uses = new Map<number, number>();
-  const neighbours: number[][] = Array.from({ length: count }, () => []);
-  for (let t = 0; t < triangles.length; t += 3) {
-    for (let k = 0; k < 3; k++) {
-      const a = triangles[t + k];
-      const b = triangles[t + ((k + 1) % 3)];
-      const key = Math.min(a, b) * 65536 + Math.max(a, b);
-      uses.set(key, (uses.get(key) ?? 0) + 1);
-      neighbours[a].push(b);
-      neighbours[b].push(a);
-    }
-  }
-  const level = new Int32Array(count).fill(-1);
-  let ring: number[] = [];
-  for (const [key, n] of uses) {
-    if (n !== 1) continue;
-    for (const v of [Math.floor(key / 65536), key % 65536]) {
-      if (level[v] < 0) {
-        level[v] = 0;
-        ring.push(v);
+const neighbourLists = new WeakMap<Uint16Array, number[][]>();
+
+function neighboursOf(triangles: Uint16Array, count: number) {
+  let lists = neighbourLists.get(triangles);
+  if (!lists) {
+    lists = Array.from({ length: count }, () => [] as number[]);
+    for (let t = 0; t < triangles.length; t += 3) {
+      for (let k = 0; k < 3; k++) {
+        const a = triangles[t + k];
+        const b = triangles[t + ((k + 1) % 3)];
+        lists[a].push(b);
+        lists[b].push(a);
       }
+    }
+    neighbourLists.set(triangles, lists);
+  }
+  return lists;
+}
+
+/** 1 on the given points, fading to 0 over `rings` steps of neighbouring points away from them. */
+export function ringWeights(data: FaceData, seeds: number[], rings: number): Float32Array {
+  const neighbours = neighboursOf(data.triangles, data.vertexCount);
+  const level = new Int32Array(data.vertexCount).fill(-1);
+  let ring: number[] = [];
+  for (const v of seeds) {
+    if (level[v] < 0) {
+      level[v] = 0;
+      ring.push(v);
     }
   }
   for (let r = 1; r <= rings; r++) {
@@ -130,10 +132,19 @@ function edgeness(triangles: Uint16Array, count: number, rings = 4): Float32Arra
   return Float32Array.from(level, (l) => (l < 0 ? 0 : 1 - l / (rings + 1)));
 }
 
+/**
+ * 1 on the scan's open edges (its outline and the openings at the eyes and lips), fading to 0 over
+ * four steps of neighbouring points inward. An edge is open where only one triangle uses it.
+ */
+function edgeness(data: FaceData): Float32Array {
+  const { outline, mouth, eyes } = openings(data);
+  return ringWeights(data, [...outline, ...mouth, ...eyes.flat()], 4);
+}
+
 function weightsOf(data: FaceData) {
   let w = weights.get(data);
   if (!w) {
-    w = { expressive: expressiveness(data), edge: edgeness(data.triangles, data.vertexCount) };
+    w = { expressive: expressiveness(data), edge: edgeness(data) };
     weights.set(data, w);
   }
   return w;
@@ -152,6 +163,7 @@ export function lookSurface({ data, scene }: LookParts) {
   const { expressive, edge } = weightsOf(data);
   geometry.setAttribute("aExpressive", new BufferAttribute(expressive, 1));
   geometry.setAttribute("aEdge", new BufferAttribute(edge, 1));
+  geometry.setAttribute("aExtra", new BufferAttribute(new Float32Array(data.vertexCount), 1));
   return geometry;
 }
 

@@ -107,8 +107,10 @@ varying vec3 vSolid;
 #ifdef LOOK
 attribute float aExpressive; // how far this point moves across your expressions, 0-1
 attribute float aEdge;       // 1 on the scan's open edges (its outline, eyes and lips), fading inward
+attribute float aExtra;      // a weight of the look's own choosing (0 unless it sets one)
 varying float vExpressive;
 varying float vEdge;
+varying float vExtra;
 varying vec3 vView;          // the position seen from the camera
 varying vec3 vFace;          // the position on the face before the head turns, for patterns that stick to it
 #endif
@@ -226,6 +228,7 @@ void main() {
   vFace = p;
   vExpressive = aExpressive;
   vEdge = aEdge;
+  vExtra = aExtra;
 #endif
   p = mix(p, (uHead * vec4(p, 1.0)).xyz, aHeadWeight);
 #ifdef SOLID
