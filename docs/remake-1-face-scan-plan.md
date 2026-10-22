@@ -1037,6 +1037,25 @@ Each round goes after the biggest number.
 
 ### 7.11 Instant answers
 
+> **Changed 2026-10-21: question buttons, played from the Mac.** This replaces the static files
+> described below.
+> - **Four buttons:** Tell me about yourself; What kind of role are you looking for?; When can you
+>   start?; Do you need sponsorship?
+> - **Versions:** the two open-ended questions get 5 versions each, worded differently, with the same
+>   approved facts. Repeat clicks play the next approved one, never the same twice in a row. The two
+>   factual ones play your fixed answer word for word (`availability-location`,
+>   `work-authorization` in `knowledge/answers.yaml`).
+> - **Where they live:** private, in `knowledge/buttons.yaml`. You approve each version after
+>   listening (`npm run buttons -- review` builds a listening page). Nothing is ever played until
+>   it's approved.
+> - **How a click works:** the page asks the api (`POST /api/instant`), which plays the version from
+>   audio voiced ahead of time and kept on the Mac (`npm run buttons -- voice`): no AI call and no
+>   search, about as fast as the first sentence of any reply arrives. No audio or answer text sits at
+>   a public address or in the repo, so your full availability answer stays as it is.
+> - **The trade-off:** when the Mac is down, the buttons sleep with the face. A visitor can still
+>   record anything they hear.
+> - **Typed questions are unchanged:** they still go through the full pipeline (§7.1).
+
 Six common recruiter questions get pre-made answers in your voice: no search, no AI calls, and no
 work on the Mac.
 

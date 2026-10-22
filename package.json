@@ -25,6 +25,7 @@
     "transcripts": "npm run transcripts -w @portfolio/server --",
     "speed": "npm run speed -w @portfolio/server",
     "redteam": "npm run redteam -w @portfolio/server --",
+    "buttons": "npm run buttons -w @portfolio/server --",
     "face": "node tools/face/build.ts",
     "face:still": "node tools/face/still.ts",
     "test:e2e": "npm run build && playwright test",

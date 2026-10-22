@@ -86,6 +86,9 @@ export function makeSpeaker(options: SpeakerOptions): ChatDeps["speak"] {
     } catch {
       // Not cached yet (or the file is unreadable): voice it.
     }
+    // A text that should have been ready (an approved answer, a button's version) is voiced now, and
+    // slower for it; one line says so, without the text.
+    log("voice: cache miss, so a sentence was voiced on the spot");
     const spoken = await voice(text);
     // Without lip timing the aligner failed on this sentence; don't keep that result for good.
     if (spoken?.words && spoken.visemes) {

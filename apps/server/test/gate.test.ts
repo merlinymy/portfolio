@@ -18,6 +18,7 @@ import {
   latestRiskNote,
   listStrikes,
   purgeOld,
+  recordButtonClick,
   recentConversations,
   recentTimings,
   recentTurns,
@@ -490,4 +491,30 @@ test("what the strike check remembers follows the browser across conversations, 
   assert.equal((await refusedCategories(db.sql, visitor)).size, 1);
   await db.sql`update messages set created_at = now() - interval '25 hours' where visitor_id = ${visitor}`;
   assert.equal((await refusedCategories(db.sql, visitor)).size, 0);
+});
+
+test("button clicks are counted per browser and button, in turn, even when made at the same moment", async () => {
+  const visitor = await addVisitor(db.sql);
+  const burst = await Promise.all(Array.from({ length: 6 }, () => recordButtonClick(db.sql, visitor, null, "about-you")));
+  assert.deepEqual([...burst].sort(), [0, 1, 2, 3, 4, 5], "each click sees how many came before it, once");
+  assert.equal(await recordButtonClick(db.sql, visitor, null, "role"), 0, "another button starts from 0");
+  assert.equal(await recordButtonClick(db.sql, await addVisitor(db.sql), null, "about-you"), 0, "and so does another browser");
+  assert.equal(await recordButtonClick(db.sql, visitor, null, "about-you"), 6);
+});
+
+test("a click isn't a message for the limits, even though its row is a visitor row", async () => {
+  const { gate } = setup();
+  const visitor = await addVisitor(db.sql);
+  const conversation = randomUUID();
+  await createConversation(db.sql, conversation, visitor);
+  for (let i = 0; i < 15; i++) {
+    await saveMessage(db.sql, { conversationId: conversation, visitorId: visitor, ipHash: "ip-clicks", role: "visitor", text: "Tell me about yourself.", action: "fixed", intent: "button:about-you" });
+  }
+  assert.equal(await reasonOf(await gate.check(input(visitor, "ip-clicks"))), "ok");
+  assert.equal(await gate.isLocked(visitor), false);
+  await db.sql`update visitors set strikes = 3, locked_until = now() + interval '1 day' where id = ${visitor}`;
+  assert.equal(await gate.isLocked(visitor), true);
+  await db.sql`update visitors set locked_until = now() - interval '1 minute' where id = ${visitor}`;
+  assert.equal(await gate.isLocked(visitor), false, "a lock that has run out is lifted");
+  assert.equal((await getVisitor(db.sql, visitor))?.strikes, 0);
 });

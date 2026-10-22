@@ -9,7 +9,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { getConnInfo } from "@hono/node-server/conninfo";
-import type { ChatEvent } from "@portfolio/shared/chat";
+import type { ChatEvent, InstantButton } from "@portfolio/shared/chat";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -22,7 +22,6 @@ import {
   getConversation,
   getVisitor,
   insertHandoff,
-  insertInstantClick,
   setHandoffEmailResult,
   setHandoffSummary,
   unlockIfExpired,
@@ -32,6 +31,8 @@ import type { VisitorRow } from "./db/chat.ts";
 import type { Sql } from "./db/client.ts";
 import { hashIp, isUuid, normalizeIp, safeEqual, signVisitor, stripControl, verifyTurnstile, verifyVisitor } from "./identity.ts";
 import type { Mail } from "./mail.ts";
+import type { Button } from "./chat/buttons.ts";
+import { handleButtonClick } from "./chat/click.ts";
 import { failedCallUsage, handleMessage } from "./chat/pipeline.ts";
 import type { PipelineContext } from "./chat/pipeline.ts";
 import { ERROR } from "./chat/replies.ts";
@@ -64,6 +65,8 @@ export interface AppConfig {
 export interface AppContext {
   sql: Sql;
   pipeline: PipelineContext;
+  /** The question buttons (knowledge/buttons.yaml); only those with an approved version are offered. */
+  buttons: readonly Button[];
   config: AppConfig;
   /** The two-line summary of a conversation for the handoff email (summary.ts). */
   summarize(turns: Turn[]): Promise<{ text: string; usage: Usage }>;
@@ -156,7 +159,7 @@ export function makeRequestCounter(now: () => number = Date.now) {
 }
 
 export function createApp(ctx: AppContext): Hono {
-  const { sql, config, pipeline } = ctx;
+  const { sql, config, pipeline, buttons } = ctx;
   const fetchImpl = ctx.fetch ?? fetch;
   const app = new Hono();
 
@@ -249,6 +252,54 @@ export function createApp(ctx: AppContext): Hono {
     return c.json({ error: "server error" }, 500);
   });
 
+  /**
+   * Answers with a stream of server-sent events: `work` makes the reply, sending events through
+   * `emit`, and returns the one line to log. Handles what every stream needs: a comment line now
+   * and then to keep it open, a write that takes too long (a client that stopped reading is
+   * dropped, freeing its place and its voice slot), a visitor who leaves, and a failure after the
+   * stream has started (the page gets the fixed apology as `done`).
+   */
+  const streamReply = (c: Context, work: (emit: (event: ChatEvent) => Promise<void>, signal: AbortSignal) => Promise<string>) =>
+    streamSSE(c, async (stream) => {
+      const left = new AbortController();
+      stream.onAbort(() => left.abort());
+      // A comment line every so often keeps the stream open through proxies while a reply is made.
+      const keepAlive = setInterval(() => {
+        stream.write(": keep-alive\n\n").catch(() => {});
+      }, config.keepAliveMs);
+
+      let finished = false;
+      const emit = async (event: ChatEvent) => {
+        if (stream.aborted) throw new Error("the stream is closed");
+        if (event.type === "done") finished = true;
+        // A client that stops reading would hold this message's place (and a voice slot) for ever:
+        // if a write takes too long the visitor is treated as gone and the stream is dropped.
+        let timer: NodeJS.Timeout | undefined;
+        const stalled = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            ctx.log("chat: a client stopped reading its stream; dropped");
+            stream.abort();
+            reject(new Error("the visitor stopped reading"));
+          }, config.emitTimeoutMs);
+        });
+        try {
+          await Promise.race([stream.writeSSE({ event: event.type, data: JSON.stringify(event) }), stalled]);
+        } finally {
+          clearTimeout(timer);
+        }
+      };
+
+      try {
+        ctx.log(await work(emit, left.signal));
+      } catch (err) {
+        ctx.log(`chat: failed (${err instanceof Error ? `${err.name}: ${err.message.slice(0, 160)}` : "error"})`);
+        // The stream has started, so the page is told with the fixed apology rather than a status code.
+        if (!finished && !left.signal.aborted) await emit({ type: "done", kind: "error", text: ERROR }).catch(() => {});
+      } finally {
+        clearInterval(keepAlive);
+      }
+    });
+
   // ---- Health (plan §7.8): the page puts the face to sleep on a 503 or no answer in 4 s. ----
   app.get("/api/health", async (c) => {
     const ms = config.healthTimeoutMs;
@@ -304,51 +355,15 @@ export function createApp(ctx: AppContext): Hono {
     if (!body) return badRequest(c);
     const ipHash = hashIp(clientIp(c), config.ipSalt);
 
-    return streamSSE(c, async (stream) => {
-      const left = new AbortController();
-      stream.onAbort(() => left.abort());
-      // A comment line every so often keeps the stream open through proxies while a reply is made.
-      const keepAlive = setInterval(() => {
-        stream.write(": keep-alive\n\n").catch(() => {});
-      }, config.keepAliveMs);
-
-      let finished = false;
-      const emit = async (event: ChatEvent) => {
-        if (stream.aborted) throw new Error("the stream is closed");
-        if (event.type === "done") finished = true;
-        // A client that stops reading would hold this message's place (and a voice slot) for ever:
-        // if a write takes too long the visitor is treated as gone and the stream is dropped.
-        let timer: NodeJS.Timeout | undefined;
-        const stalled = new Promise<never>((_, reject) => {
-          timer = setTimeout(() => {
-            ctx.log("chat: a client stopped reading its stream; dropped");
-            stream.abort();
-            reject(new Error("the visitor stopped reading"));
-          }, config.emitTimeoutMs);
-        });
-        try {
-          await Promise.race([stream.writeSSE({ event: event.type, data: JSON.stringify(event) }), stalled]);
-        } finally {
-          clearTimeout(timer);
-        }
-      };
-
-      try {
-        const result = await handleMessage(
-          pipeline,
-          { visitorId: visitor.id, ipHash, message: body.message, jobPost: body.jobPost, conversationId: body.conversationId },
-          emit,
-          { signal: left.signal },
-        );
-        // One line a message: how it was handled, how long it took, what it cost. Never the text.
-        ctx.log(`chat: ${result.kind} category=${result.category ?? "-"} total=${result.timings.total ?? 0}ms cost=$${result.costUsd.toFixed(4)}`);
-      } catch (err) {
-        ctx.log(`chat: failed (${err instanceof Error ? `${err.name}: ${err.message.slice(0, 160)}` : "error"})`);
-        // The stream has started, so the page is told with the fixed apology rather than a status code.
-        if (!finished && !left.signal.aborted) await emit({ type: "done", kind: "error", text: ERROR }).catch(() => {});
-      } finally {
-        clearInterval(keepAlive);
-      }
+    return streamReply(c, async (emit, signal) => {
+      const result = await handleMessage(
+        pipeline,
+        { visitorId: visitor.id, ipHash, message: body.message, jobPost: body.jobPost, conversationId: body.conversationId },
+        emit,
+        { signal },
+      );
+      // One line a message: how it was handled, how long it took, what it cost. Never the text.
+      return `chat: ${result.kind} category=${result.category ?? "-"} total=${result.timings.total ?? 0}ms cost=$${result.costUsd.toFixed(4)}`;
     });
   });
 
@@ -445,17 +460,26 @@ export function createApp(ctx: AppContext): Hono {
     return c.json({ ok: true });
   });
 
-  // ---- Instant-answer clicks (plan §7.11): logged only ----
+  // ---- The question buttons (plan §7.11, changed 2026-10-21) ----
+  // The buttons the page may show: the ones with at least one approved version. Nothing private.
+  const offered = () => buttons.filter((b) => b.versions.length > 0);
+  app.get("/api/instant", (c) => c.json(offered().map(({ id, question }): InstantButton => ({ id, question }))));
+
+  // A click: plays the browser's next approved version, voiced ahead of time on this Mac. No AI is
+  // called, so only the request limiter applies; a locked browser is turned away.
   app.post("/api/instant", async (c) => {
     const visitor = await visitorFromCookie(c);
     if (!visitor) return noVisitor(c);
     const body = await readJson(c, instantBody);
     if (!body) return badRequest(c);
-    // Only the chips that exist (content/instant.yaml) can be clicked.
-    if (!pipeline.deps.fixed.entries.some((e) => e.kind === "instant" && e.id === body.id)) return badRequest(c);
-    const conversation = isUuid(body.conversationId) ? await getConversation(sql, body.conversationId, visitor.id) : undefined;
-    await insertInstantClick(sql, visitor.id, conversation?.id ?? null, body.id);
-    return c.body(null, 204);
+    const button = offered().find((b) => b.id === body.id);
+    if (!button) return c.json({ error: "no such button" }, 404);
+    const ipHash = hashIp(clientIp(c), config.ipSalt);
+
+    return streamReply(c, async (emit, signal) => {
+      const result = await handleButtonClick(pipeline, button, { visitorId: visitor.id, ipHash, conversationId: body.conversationId }, emit, { signal });
+      return `chat: button ${button.id} ${result.kind}${result.version === null ? "" : ` version=${result.version + 1}/${button.versions.length}`} total=${result.timings.total ?? 0}ms`;
+    });
   });
 
   return app;

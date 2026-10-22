@@ -14,6 +14,7 @@
     "transcripts": "node src/scripts/transcripts.ts",
     "speed": "node src/scripts/speed.ts",
     "redteam": "node src/scripts/redteam.ts",
+    "buttons": "node src/scripts/buttons.ts",
     "test": "node --test test/*.test.ts",
     "test:search": "node src/scripts/test-search.ts",
     "check": "tsc --noEmit -p ."

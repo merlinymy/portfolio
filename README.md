@@ -39,6 +39,7 @@ Run from the repo root, with Node 22.22 or newer:
 | `npm run search -- "A question?"` | Shows the passages the chat would be given for a question |
 | `npm run test:search` | Checks that every test question in `apps/server/test/search-questions.yaml` finds its passage |
 | `npm run api` | Starts the chat api at http://127.0.0.1:8791, on this Mac only. Needs `npm run db` and `npm run voice`, and `ANTHROPIC_API_KEY` in `.env` for anything but the fixed replies |
+| `npm run buttons -- review` | Voices every wording of the question buttons (`knowledge/buttons.yaml`) and writes a page to listen to them: `knowledge/voice/buttons/index.html`. `-- voice` voices only the approved ones, so clicks play at once |
 | `npm run redteam` | Runs the private red-team set (`knowledge/redteam/`) through the real chat and reports false strikes and missed attacks. Costs a few dollars of Claude credit per full run |
 | `npm run strikes -- list` | Lists strikes; `-- revoke <strikeId>` undoes a mistaken one, `-- unlock <visitorId>` unlocks a browser |
 | `npm run transcripts -- recent` | The latest conversations; `-- show <conversationId>` prints one, `-- purge` deletes those over 12 months old |

@@ -13,15 +13,20 @@ import type { ChatEvent, VisitorStatus } from "@portfolio/shared/chat";
 import postgres from "postgres";
 import { createApp, makeRequestCounter } from "../src/app.ts";
 import type { AppConfig, AppContext } from "../src/app.ts";
-import { MAX_STRIKES } from "../src/db/chat.ts";
+import { MAX_STRIKES, messageCounts } from "../src/db/chat.ts";
 import { hashIp, signVisitor, verifyVisitor } from "../src/identity.ts";
+import { loadButtons } from "../src/chat/buttons.ts";
+import { makeGate } from "../src/chat/gate.ts";
+import { makeSpeaker } from "../src/chat/voice.ts";
+import { readButtons } from "../src/wiring.ts";
 import { purgeOutbox, sendMail } from "../src/mail.ts";
 import type { Mail, MailConfig } from "../src/mail.ts";
 import { ERROR, GATE } from "../src/chat/replies.ts";
+import { FIXED } from "./helpers/rig.ts";
 import type { Turn } from "../src/chat/types.ts";
 import { addVisitor, createTestDb } from "./helpers/db.ts";
 import type { TestDb } from "./helpers/db.ts";
-import { haiku, rig as makeRig } from "./helpers/rig.ts";
+import { BUTTONS, haiku, rig as makeRig } from "./helpers/rig.ts";
 import type { Rig } from "./helpers/rig.ts";
 
 const ORIGIN = "origin-secret-for-tests";
@@ -68,6 +73,7 @@ function harness(overrides: Partial<AppContext> = {}, config: Partial<AppConfig>
   const app = createApp({
     sql: db.sql,
     pipeline: r.ctx,
+    buttons: BUTTONS,
     config: {
       originSecret: ORIGIN,
       cookieSecret: COOKIE_SECRET,
@@ -549,39 +555,304 @@ test("a locked browser can still use the handoff form", async () => {
 
 // ---- Instant clicks ----------------------------------------------------------------------------
 
-test("an instant-answer click is logged and answered with 204, for a browser and a chip that exist", async () => {
+// ---- Question buttons ---------------------------------------------------------------------------
+
+const click = async (h: Harness, visitor: string, id: string, extra: Record<string, unknown> = {}) => {
+  const res = await call(h, "/api/instant", { body: { id, ...extra }, visitor, ip: visitor });
+  return { res, ...parseSse(res.status === 200 ? await res.text() : ""), body: res.status === 200 ? null : await res.text() };
+};
+const playedText = (events: { data: ChatEvent }[]) => (events.at(-1)!.data as Extract<ChatEvent, { type: "done" }>).text;
+
+test("GET /api/instant lists the buttons that have an approved version, without a cookie, behind the secret and the limiter", async () => {
+  const h = harness({}, { requestLimits: { perIpPerMinute: 3, perBrowserPerMinute: 100 } });
+  const res = await call(h, "/api/instant", { ip: "198.51.100.30" });
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), [
+    { id: "about-you", question: "Tell me about yourself." },
+    { id: "start-date", question: "When can you start?" },
+  ]);
+  assert.equal((await call(h, "/api/instant", { secret: false })).status, 403);
+  await call(h, "/api/instant", { ip: "198.51.100.30" });
+  await call(h, "/api/instant", { ip: "198.51.100.30" });
+  assert.equal((await call(h, "/api/instant", { ip: "198.51.100.30" })).status, 429);
+});
+
+test("a click streams the same events as a typed message, ending in done with kind fixed and the text", async () => {
   const h = harness();
   const visitor = await addVisitor(db.sql);
-  const chatted = await chat(h, visitor, "Hello");
-  const conversationId = (chatted.events[0].data as { conversationId: string }).conversationId;
+  const { res, events } = await click(h, visitor, "about-you");
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type") ?? "", /^text\/event-stream/);
+  assert.deepEqual(
+    events.map((e) => e.name),
+    ["meta", "state", "state", "sentence", "sentence", "done"],
+  );
+  assert.deepEqual(
+    events.filter((e) => e.data.type === "state").map((e) => (e.data as { state: string }).state),
+    ["thinking", "speaking"],
+  );
+  const done = events.at(-1)!.data as Extract<ChatEvent, { type: "done" }>;
+  assert.equal(done.kind, "fixed");
+  assert.equal(done.text, BUTTONS[0].versions[0]);
+  const sentences = events.filter((e) => e.data.type === "sentence").map((e) => e.data as Extract<ChatEvent, { type: "sentence" }>);
+  assert.deepEqual(sentences.map((s) => s.text), ["I'm Merlin.", "I build AI tools for experts."]);
+  assert.ok(sentences.every((s) => s.audio?.startsWith("AUDIO(")), "each sentence is voiced");
+  assert.deepEqual(h.rig.calls.filter((c) => c.stage === "speak").map((c) => (c.arg as { cache: boolean }).cache), [true, true], "from the cache");
+  assert.deepEqual(h.rig.calls.filter((c) => c.stage !== "speak"), [], "no strike check, search or answer");
+  assert.match(h.logs.find((l) => l.startsWith("chat: button")) ?? "", /^chat: button about-you fixed version=1\/3 total=\d+ms$/);
+});
 
-  const res = await call(h, "/api/instant", { body: { id: "tell-me-about-yourself", conversationId }, visitor });
-  assert.equal(res.status, 204);
-  assert.equal(await res.text(), "");
-  const rows = await db.sql<{ visitor_id: string | null; conversation_id: string | null; instant_id: string }[]>`
-    select visitor_id, conversation_id, instant_id from instant_clicks where visitor_id = ${visitor}`;
-  assert.deepEqual([...rows], [{ visitor_id: visitor, conversation_id: conversationId, instant_id: "tell-me-about-yourself" }]);
+test("repeat clicks play the approved versions in file order, cycling, so never the same one twice in a row", async () => {
+  const h = harness();
+  const visitor = await addVisitor(db.sql);
+  const played: string[] = [];
+  for (let i = 0; i < 7; i++) played.push(playedText((await click(h, visitor, "about-you")).events));
+  const v = BUTTONS[0].versions;
+  assert.deepEqual(played, [v[0], v[1], v[2], v[0], v[1], v[2], v[0]]);
+  assert.ok(played.every((text, i) => i === 0 || text !== played[i - 1]));
+  assert.ok(!played.includes("This wording was never approved."));
 
-  // No cookie, no click: the route isn't open to anyone who knows the secret.
-  const anonymous = await call(h, "/api/instant", { body: { id: "tell-me-about-yourself" } });
+  // Another button has its own count, and a button with one version plays it every time.
+  assert.equal(playedText((await click(h, visitor, "start-date")).events), BUTTONS[1].versions[0]);
+  assert.equal(playedText((await click(h, visitor, "start-date")).events), BUTTONS[1].versions[0]);
+  assert.equal(playedText((await click(h, visitor, "about-you")).events), v[1], "the 8th click on about-you");
+
+  // Another browser starts from the first.
+  assert.equal(playedText((await click(h, await addVisitor(db.sql), "about-you")).events), v[0]);
+  const [{ n }] = await db.sql<{ n: number }[]>`select count(*)::int as n from instant_clicks where visitor_id = ${visitor} and instant_id = 'about-you'`;
+  assert.equal(n, 8);
+});
+
+test("clicks made at the same moment still play different versions in turn", async () => {
+  const h = harness();
+  const visitor = await addVisitor(db.sql);
+  const results = await Promise.all(Array.from({ length: 3 }, () => click(h, visitor, "about-you")));
+  const played = results.map((r) => playedText(r.events)).sort();
+  assert.deepEqual(played, [...BUTTONS[0].versions].sort());
+});
+
+test("only approved wordings play: the real loader keeps the unapproved ones out, whatever order the file has them in", async () => {
+  const dir = await mkdtemp(`${tmpdir()}/buttons-test-`);
+  try {
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(
+      `${dir}/buttons.yaml`,
+      `
+- id: about-you
+  question: Tell me about yourself.
+  versions:
+    - { approved: false, text: Draft one, not approved. }
+    - { approved: true, text: Approved one. }
+    - { approved: false, text: Draft two, not approved. }
+    - { approved: true, text: Approved two. }
+- id: sponsorship
+  question: Do you need sponsorship?
+  answer: salary_expectations
+- id: waiting
+  question: Nothing approved yet?
+  versions:
+    - { approved: false, text: Not yet. }
+`,
+    );
+    const logs: string[] = [];
+    const buttons = await readButtons(dir, FIXED, (l) => logs.push(l));
+    assert.deepEqual(logs, ['buttons: "waiting" has no approved version yet, so it isn\'t offered']);
+    const h = harness({ buttons });
+    const visitor = await addVisitor(db.sql);
+    const played = [];
+    for (let i = 0; i < 5; i++) played.push(playedText((await click(h, visitor, "about-you")).events));
+    assert.deepEqual(played, ["Approved one.", "Approved two.", "Approved one.", "Approved two.", "Approved one."]);
+    assert.equal(playedText((await click(h, visitor, "sponsorship")).events), FIXED.get("salary_expectations")!.answer, "a fixed answer, word for word");
+    assert.equal((await click(h, visitor, "waiting")).res.status, 404, "nothing approved: not a button yet");
+    assert.deepEqual((await (await call(h, "/api/instant")).json()).map((b: { id: string }) => b.id), ["about-you", "sponsorship"]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("buttons.yaml: no file means no buttons with one line; a bad file is an error that names it", async () => {
+  const dir = await mkdtemp(`${tmpdir()}/buttons-test-`);
+  try {
+    const { writeFile } = await import("node:fs/promises");
+    const logs: string[] = [];
+    assert.deepEqual(await readButtons(dir, FIXED, (l) => logs.push(l)), []);
+    assert.equal(logs.length, 1);
+    assert.match(logs[0], /buttons\.yaml isn't there/);
+
+    await writeFile(`${dir}/buttons.yaml`, "- id: about-you\n  question: Q\n  answer: no_such_answer\n");
+    await assert.rejects(readButtons(dir, FIXED, () => {}), (err: Error) => err.message.includes("buttons.yaml") && err.message.includes("no_such_answer"));
+    await writeFile(`${dir}/buttons.yaml`, "- id: x\n  question: [unclosed\n");
+    await assert.rejects(readButtons(dir, FIXED, () => {}), (err: Error) => err.message.includes("buttons.yaml"));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("a click needs a browser and a button that exists and has an approved version", async () => {
+  const h = harness();
+  const visitor = await addVisitor(db.sql);
+  const anonymous = await call(h, "/api/instant", { body: { id: "about-you" } });
   assert.equal(anonymous.status, 401);
   assert.deepEqual(await anonymous.json(), { error: "no visitor" });
-
-  // Only chips that exist (kind "instant" in content/instant.yaml), not any other approved answer or made-up id.
-  for (const id of ["made-up", "salary_expectations", "hobbies", "tell-me-about-yourself#follow-up"]) {
-    assert.equal((await call(h, "/api/instant", { body: { id }, visitor })).status, 400, id);
+  for (const id of ["made-up", "role", "salary_expectations", "about-you#follow-up", "ABOUT-YOU"]) {
+    const result = await click(h, visitor, id);
+    assert.equal(result.res.status, 404, id);
+    assert.deepEqual(JSON.parse(result.body!), { error: "no such button" });
   }
-  assert.equal((await db.sql`select 1 from instant_clicks where visitor_id = ${visitor}`).length, 1);
-
-  // Someone else's conversation isn't attached.
-  const stranger = await addVisitor(db.sql);
-  assert.equal((await call(h, "/api/instant", { body: { id: "whats-your-strongest-stack", conversationId }, visitor: stranger })).status, 204);
-  const [theirs] = await db.sql<{ conversation_id: string | null }[]>`select conversation_id from instant_clicks where visitor_id = ${stranger}`;
-  assert.equal(theirs.conversation_id, null);
-
+  assert.equal((await click(h, visitor, "")).res.status, 400);
   assert.equal((await call(h, "/api/instant", { body: {}, visitor })).status, 400);
   assert.equal((await call(h, "/api/instant", { body: { id: "x".repeat(101) }, visitor })).status, 400);
+  assert.equal((await db.sql`select 1 from instant_clicks where visitor_id = ${visitor}`).length, 0, "nothing was recorded");
+  assert.deepEqual(h.rig.calls, []);
 });
+
+test("a locked browser gets the locked reply, like the chat, and the click isn't counted", async () => {
+  const h = harness();
+  const visitor = await addVisitor(db.sql);
+  await db.sql`update visitors set strikes = 3, locked_until = now() + interval '3 days' where id = ${visitor}`;
+  const { events } = await click(h, visitor, "about-you");
+  const done = events.at(-1)!.data as Extract<ChatEvent, { type: "done" }>;
+  assert.deepEqual({ kind: done.kind, text: done.text }, { kind: "gate", text: GATE.locked });
+  assert.deepEqual(events.map((e) => e.name).slice(0, 3), ["meta", "state", "state"]);
+  assert.equal((await db.sql`select 1 from instant_clicks where visitor_id = ${visitor}`).length, 0, "no click recorded: the next real one plays the first version");
+  const rows = await db.sql<{ role: string; action: string; intent: string | null }[]>`select role, action, intent from messages where visitor_id = ${visitor} order by id`;
+  assert.deepEqual(rows.map((r) => ({ ...r })), [
+    { role: "visitor", action: "gate", intent: "button:about-you" },
+    { role: "assistant", action: "gate", intent: null },
+  ]);
+
+  // The lock running out lets the click through, from the first version.
+  await db.sql`update visitors set locked_until = now() - interval '1 minute' where id = ${visitor}`;
+  assert.equal(playedText((await click(h, visitor, "about-you")).events), BUTTONS[0].versions[0]);
+});
+
+test("clicks aren't messages: they don't use up the typed limits, and the spending cap doesn't stop them", async () => {
+  const h = harness();
+  const visitor = await addVisitor(db.sql);
+  for (let i = 0; i < 14; i++) assert.equal((await click(h, visitor, i % 2 ? "start-date" : "about-you")).res.status, 200);
+  const counts = await messageCounts(db.sql, visitor, visitor);
+  assert.deepEqual(counts, { day: 0, fiveMinutes: 0, ipTenMinutes: 0 });
+  // 14 clicks, and the typed message still isn't "too fast" (the limit is 10 in 5 minutes).
+  const typed = await chat(h, visitor, "What did you build?");
+  assert.equal((typed.events.at(-1)!.data as { kind: string }).kind, "answer");
+
+  // Over the month's cap, typing is paused and the buttons still work.
+  h.rig.ctx.gate = makeGate({ sql: db.sql, limits: { ...h.rig.ctx.gate.limits, spendCapUsd: 0 }, mail: async () => {}, log: () => {} });
+  const paused = await chat(h, visitor, "And another?");
+  assert.equal((paused.events.at(-1)!.data as { kind: string }).kind, "gate");
+  assert.equal((await click(h, visitor, "about-you")).res.status, 200);
+  assert.equal(playedText((await click(h, visitor, "about-you")).events) !== "", true);
+  const [{ cost }] = await db.sql<{ cost: number }[]>`
+    select coalesce(sum(cost_usd) filter (where intent like 'button:%'), 0)::float8 as cost from messages where visitor_id = ${visitor}`;
+  assert.equal(cost, 0);
+});
+
+test("a click is written to the transcript, in the browser's latest conversation or a new one, and the strike check sees it", async () => {
+  const h = harness();
+  const visitor = await addVisitor(db.sql);
+  const first = await click(h, visitor, "about-you");
+  const meta = first.events[0].data as Extract<ChatEvent, { type: "meta" }>;
+  const rows = await db.sql<
+    { id: string; role: string; text: string; category: string | null; intent: string | null; action: string; cost: number; timings: Record<string, number> | null; conversation_id: string }[]
+  >`select id::text, role, text, category, intent, action, cost_usd::float8 as cost, timings, conversation_id from messages where visitor_id = ${visitor} order by id`;
+  assert.equal(rows.length, 2);
+  assert.deepEqual(
+    { ...rows[0], timings: undefined },
+    { id: meta.messageId, role: "visitor", text: "Tell me about yourself.", category: null, intent: "button:about-you", action: "fixed", cost: 0, timings: undefined, conversation_id: meta.conversationId },
+  );
+  assert.equal(typeof rows[0].timings?.total, "number");
+  assert.equal(typeof rows[0].timings?.first_audio, "number");
+  assert.deepEqual({ role: rows[1].role, text: rows[1].text, action: rows[1].action, conversation_id: rows[1].conversation_id }, { role: "assistant", text: BUTTONS[0].versions[0], action: "fixed", conversation_id: meta.conversationId });
+
+  // A typed message continues in its own conversation; the next click goes in the latest one.
+  const typed = await chat(h, visitor, "What did you build with Postgres?");
+  const typedConversation = (typed.events[0].data as { conversationId: string }).conversationId;
+  const second = await click(h, visitor, "start-date");
+  assert.equal((second.events[0].data as { conversationId: string }).conversationId, typedConversation);
+  // Naming a conversation of their own is honoured; someone else's isn't.
+  const named = await click(h, visitor, "start-date", { conversationId: meta.conversationId });
+  assert.equal((named.events[0].data as { conversationId: string }).conversationId, meta.conversationId);
+  const stranger = await addVisitor(db.sql);
+  const theirs = await click(h, stranger, "start-date", { conversationId: meta.conversationId });
+  assert.notEqual((theirs.events[0].data as { conversationId: string }).conversationId, meta.conversationId);
+
+  // The strike check's history includes what the buttons asked and answered.
+  h.rig.calls.length = 0;
+  await chat(h, visitor, "Anything else?");
+  const asked = h.rig.calls.find((c) => c.stage === "strikeCheck")!.arg as { history: { role: string; text: string }[] };
+  const texts = asked.history.map((t) => t.text);
+  assert.ok(texts.includes("Tell me about yourself."));
+  assert.ok(texts.includes(BUTTONS[0].versions[0]));
+  assert.ok(texts.includes("When can you start?"));
+  assert.ok(texts.includes("I'm available from January."));
+
+  // A click is never a strike and never small talk.
+  assert.equal((await db.sql`select 1 from strikes where visitor_id = ${visitor}`).length, 0);
+  assert.equal((await db.sql`select 1 from small_talk_uses where visitor_id = ${visitor}`).length, 0);
+  assert.equal((await db.sql`select strikes from visitors where id = ${visitor}`)[0].strikes, 0);
+});
+
+test("a sentence that isn't in the voice cache yet is voiced on the spot, with one line in the log and none of its text", async () => {
+  const cacheDir = await mkdtemp(`${tmpdir()}/voice-cache-test-`);
+  try {
+    const requested: string[] = [];
+    const fetchImpl = (async (_url: string | URL | Request, init?: RequestInit) => {
+      const text = JSON.parse(String(init?.body)).text as string;
+      requested.push(text);
+      return Response.json({
+        text,
+        duration: 1,
+        words: [{ text, start: 0, end: 1 }],
+        visemes: [[0, "sil"]],
+        audio: `LIVE(${text})`,
+      });
+    }) as typeof fetch;
+    const logs: string[] = [];
+    const speak = makeSpeaker({ modelsUrl: "http://models.test", cacheDir, timeoutMs: 2000, fetchImpl, log: (l) => logs.push(l) });
+    const h = harness();
+    h.rig.ctx.deps.speak = speak;
+    const visitor = await addVisitor(db.sql);
+
+    // The first version's sentences were voiced ahead of time (what npm run buttons -- voice does).
+    for (const sentence of ["I'm Merlin.", "I build AI tools for experts."]) await speak(sentence, { cache: true });
+    requested.length = 0;
+    logs.length = 0;
+    const ahead = await click(h, visitor, "about-you");
+    assert.deepEqual(requested, [], "nothing was voiced: the cache had it");
+    assert.equal(logs.length, 0, "and no cache miss was logged");
+    assert.equal((ahead.events.filter((e) => e.data.type === "sentence")[0].data as { audio: string }).audio, "LIVE(I'm Merlin.)");
+
+    // The second version wasn't: it's voiced now, and the reply still plays with audio.
+    const miss = await click(h, visitor, "about-you");
+    assert.deepEqual(requested, ["Hi, Merlin here.", "I like useful AI.", "It has to be right."]);
+    const sentences = miss.events.filter((e) => e.data.type === "sentence").map((e) => e.data as Extract<ChatEvent, { type: "sentence" }>);
+    assert.equal(sentences.length, 3);
+    assert.ok(sentences.every((s) => s.audio === `LIVE(${s.text})`));
+    assert.equal(logs.filter((l) => l.includes("cache miss")).length, 3, "one line per sentence");
+    assert.ok(logs.every((l) => !l.includes("Merlin") && !l.includes("AI")), "never the text");
+
+    // Played again (after a full cycle) it's all cached.
+    await click(h, visitor, "about-you");
+    requested.length = 0;
+    const again = await click(h, visitor, "about-you");
+    assert.deepEqual(requested, []);
+    assert.equal(playedText(again.events), BUTTONS[0].versions[0]);
+  } finally {
+    await rm(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("a click is held to the request limiter and the stream rules: JSON only, a known origin", async () => {
+  const h = harness({}, { requestLimits: { perIpPerMinute: 1000, perBrowserPerMinute: 4 } });
+  const visitor = await addVisitor(db.sql);
+  assert.equal((await call(h, "/api/instant", { body: { id: "about-you" }, visitor, contentType: "text/plain" })).status, 415);
+  assert.equal((await call(h, "/api/instant", { body: { id: "about-you" }, visitor, origin: "https://evil.example" })).status, 403);
+  // 2 requests used so far; 2 more are allowed, then 429.
+  const statuses: number[] = [];
+  for (let i = 0; i < 4; i++) statuses.push((await call(h, "/api/instant", { body: { id: "about-you" }, visitor })).status);
+  assert.deepEqual(statuses, [200, 200, 429, 429]);
+});
+
 
 // ---- Email -------------------------------------------------------------------------------------
 
@@ -676,7 +947,9 @@ test("control characters are stripped from every field a visitor sends", async (
   assert.equal(handoff.status, 200);
   const [saved] = await db.sql<{ name: string; company: string; email: string; note: string }[]>`select name, company, email, note from handoffs where visitor_id = ${visitor}`;
   assert.deepEqual({ ...saved }, { name: "Ada Recruiter", company: "Acme", email: "ada@acme.example", note: "Hello there" });
-  assert.equal((await call(h, "/api/instant", { body: { id: "tell-me-about-yourself\u0000" }, visitor })).status, 204, "cleaned, then known");
+  const clicked = await call(h, "/api/instant", { body: { id: "about-you\u0000" }, visitor, ip: visitor });
+  assert.equal(clicked.status, 200, "cleaned, then known");
+  assert.equal((parseSse(await clicked.text()).events.at(-1)!.data as { kind: string }).kind, "fixed");
 });
 
 test("a flood is turned away from memory: per address and per browser, with 429 and Retry-After", async () => {

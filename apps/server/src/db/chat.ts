@@ -249,8 +249,9 @@ export interface MessageCounts {
 }
 
 /**
- * What the rate limits count (plan §7.7): messages that got past the gate, so being turned away
- * doesn't keep a visitor locked out longer.
+ * What the rate limits count (plan §7.7): typed messages that got past the gate, so being turned
+ * away doesn't keep a visitor locked out longer, and a click on a question button (no AI call)
+ * isn't a message at all.
  */
 export async function messageCounts(sql: Sql, visitorId: string, ipHash: string): Promise<MessageCounts> {
   const [row] = await sql<{ day: number; five: number; ip: number }[]>`
@@ -259,7 +260,7 @@ export async function messageCounts(sql: Sql, visitorId: string, ipHash: string)
       count(*) filter (where visitor_id = ${visitorId} and created_at > now() - interval '5 minutes')::int as five,
       count(*) filter (where ip_hash = ${ipHash} and created_at > now() - interval '10 minutes')::int as ip
     from messages
-    where role = 'visitor' and action is distinct from 'gate'
+    where role = 'visitor' and action is distinct from 'gate' and coalesce(intent, '') not like 'button:%'
       and created_at > now() - interval '24 hours' and (visitor_id = ${visitorId} or ip_hash = ${ipHash})`;
   return { day: row.day, fiveMinutes: row.five, ipTenMinutes: row.ip };
 }
@@ -472,9 +473,19 @@ export async function setHandoffEmailResult(sql: Sql, id: string, error: string 
     update handoffs set emailed_at = ${error ? null : sql`now()`}, email_error = ${error === null ? null : stripControl(error)} where id = ${id}`;
 }
 
-export async function insertInstantClick(sql: Sql, visitorId: string | null, conversationId: string | null, instantId: string): Promise<void> {
-  await sql`
-    insert into instant_clicks (visitor_id, conversation_id, instant_id) values (${visitorId}, ${conversationId}, ${stripControl(instantId)})`;
+/**
+ * Records a click on a question button and says how many clicks this browser had made on it
+ * before, so the click can play the next version in turn. The count and the insert happen under one
+ * lock per browser and button, so two clicks at once don't play the same version.
+ */
+export async function recordButtonClick(sql: Sql, visitorId: string, conversationId: string | null, buttonId: string): Promise<number> {
+  return sql.begin(async (tx) => {
+    await tx`select pg_advisory_xact_lock(hashtext(${`button:${visitorId}:${buttonId}`}))`;
+    const [{ n }] = await tx<{ n: number }[]>`
+      select count(*)::int as n from instant_clicks where visitor_id = ${visitorId} and instant_id = ${buttonId}`;
+    await tx`insert into instant_clicks (visitor_id, conversation_id, instant_id) values (${visitorId}, ${conversationId}, ${stripControl(buttonId)})`;
+    return n;
+  });
 }
 
 // ---- Retention and reading --------------------------------------------------------------------

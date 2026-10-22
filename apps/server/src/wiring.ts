@@ -12,6 +12,8 @@ import { ROOT, setting } from "./env.ts";
 import { sendMail } from "./mail.ts";
 import { search } from "./rag/search.ts";
 import { makeAnswer } from "./chat/answer.ts";
+import { loadButtons } from "./chat/buttons.ts";
+import type { Button } from "./chat/buttons.ts";
 import { claudeClient } from "./chat/claude.ts";
 import { allowedLinks, cleanReply, sentences } from "./chat/clean.ts";
 import { loadFixed } from "./chat/fixed.ts";
@@ -24,7 +26,7 @@ import { prefilter } from "./chat/prefilter.ts";
 import { loadPrompts } from "./chat/prompts.ts";
 import { makeStrikeCheck } from "./chat/strikeCheck.ts";
 import { makeSummary } from "./chat/summary.ts";
-import type { ChatDeps, Turn, Usage } from "./chat/types.ts";
+import type { ChatDeps, FixedAnswers, Turn, Usage } from "./chat/types.ts";
 import { makeSemaphore, makeSpeaker } from "./chat/voice.ts";
 
 export interface ChatSetupOptions {
@@ -36,8 +38,33 @@ export interface ChatSetupOptions {
 
 export interface ChatSetup {
   pipeline: PipelineContext;
+  /** The question buttons (knowledge/buttons.yaml): every one, approved or not. Empty if the file isn't there. */
+  buttons: Button[];
   summarize(turns: Turn[]): Promise<{ text: string; usage: Usage }>;
   claudeConfigured(): boolean;
+}
+
+/**
+ * Loads knowledge/buttons.yaml. No file means no buttons (one line says so); a file that can't be
+ * read as buttons is a startup error that names it, since a typo shouldn't quietly remove buttons.
+ */
+export async function readButtons(knowledge: string, fixed: FixedAnswers, log: (line: string) => void): Promise<Button[]> {
+  const file = `${knowledge}/buttons.yaml`;
+  let buttons: Button[];
+  try {
+    buttons = await loadButtons(knowledge, fixed);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      log("buttons: knowledge/buttons.yaml isn't there, so the chat has no question buttons");
+      return [];
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(message.includes("buttons.yaml") ? message : `${file}: ${message}`);
+  }
+  for (const button of buttons) {
+    if (button.versions.length === 0) log(`buttons: "${button.id}" has no approved version yet, so it isn't offered`);
+  }
+  return buttons;
 }
 
 export async function buildChat(options: ChatSetupOptions): Promise<ChatSetup> {
@@ -45,6 +72,7 @@ export async function buildChat(options: ChatSetupOptions): Promise<ChatSetup> {
   const knowledge = `${ROOT}knowledge`;
   const fixed = await loadFixed(knowledge, `${ROOT}content`);
   const links = await allowedLinks(`${ROOT}content`);
+  const buttons = await readButtons(knowledge, fixed, log);
 
   type Stages = {
     strikeCheck: ChatDeps["strikeCheck"];
@@ -87,6 +115,7 @@ export async function buildChat(options: ChatSetupOptions): Promise<ChatSetup> {
 
   const limits = { ...defaultLimits(), ...options.limits };
   return {
+    buttons,
     pipeline: {
       sql,
       deps,

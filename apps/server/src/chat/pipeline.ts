@@ -162,6 +162,97 @@ export function limitWords(text: string, max: number, split: (text: string) => s
   return /[.!?]$/.test(cut) ? cut : `${cut}.`;
 }
 
+/**
+ * Wraps `emit` for one reply: once a send fails (the stream closed) later sends are skipped instead
+ * of failing the reply, and `gone()` says whether the visitor has left or the stream has closed.
+ */
+export function makeSender(emit: (event: ChatEvent) => void | Promise<void>, signal?: AbortSignal) {
+  let closed = false;
+  const send = async (event: ChatEvent): Promise<void> => {
+    if (closed) return;
+    try {
+      await emit(event);
+    } catch {
+      closed = true;
+    }
+  };
+  const gone = () => closed || signal?.aborted === true;
+  return { send, gone };
+}
+
+/**
+ * Sends a reply one sentence at a time, each voiced as soon as it's ready (state speaking goes out
+ * just before the first). It waits for a voice slot, but only so long: past `voiceWaitMs` the
+ * reply goes out as text only. Stops quietly when the visitor has left.
+ */
+export async function playReply(
+  ctx: Pick<PipelineContext, "deps" | "sentences" | "voice" | "voiceWaitMs" | "log">,
+  text: string,
+  o: {
+    /** Keep each sentence's voicing on disk, for text that comes up again. */
+    cache: boolean;
+    /** false sends the sentences with no audio. */
+    speak?: boolean;
+    signal?: AbortSignal;
+    send: (event: ChatEvent) => Promise<void>;
+    gone: () => boolean;
+    onFirstSentence?: () => void;
+  },
+): Promise<void> {
+  let parts: string[];
+  try {
+    parts = ctx.sentences(text);
+  } catch {
+    parts = [];
+  }
+  if (parts.length === 0) parts = [text];
+
+  let voiced = o.speak !== false;
+  let give: (() => void) | undefined;
+  if (voiced) {
+    // Waiting for a slot ends when the visitor leaves, or after a while, when the reply goes out as text only.
+    const tired = new AbortController();
+    const timer = setTimeout(() => tired.abort(), ctx.voiceWaitMs ?? VOICE_WAIT_MS);
+    try {
+      give = await ctx.voice.acquire(o.signal ? AbortSignal.any([o.signal, tired.signal]) : tired.signal);
+    } catch {
+      if (o.gone()) return;
+      voiced = false;
+      ctx.log("chat: no voice slot came free in time; the reply went out as text only");
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  try {
+    for (const [index, sentence] of parts.entries()) {
+      if (o.gone()) break;
+      let spoken: Spoken | null = null;
+      if (voiced) {
+        try {
+          spoken = await ctx.deps.speak(sentence, { cache: o.cache });
+        } catch {
+          spoken = null;
+        }
+      }
+      if (index === 0) {
+        o.onFirstSentence?.();
+        await o.send({ type: "state", state: "speaking" });
+      }
+      await o.send({
+        type: "sentence",
+        index,
+        text: sentence,
+        audio: spoken?.audio ?? null,
+        duration: spoken?.duration ?? estimateSeconds(sentence),
+        words: spoken?.words ?? null,
+        visemes: spoken?.visemes ?? null,
+      });
+    }
+  } finally {
+    give?.();
+  }
+}
+
 export async function handleMessage(
   ctx: PipelineContext,
   input: MessageInput,
@@ -177,17 +268,7 @@ export async function handleMessage(
   const timings: Record<string, number> = {};
   const usages: Usage[] = [];
 
-  /** Sends an event. A stream that has closed stops further sends instead of failing the reply. */
-  let closed = false;
-  const send = async (event: ChatEvent): Promise<void> => {
-    if (closed) return;
-    try {
-      await emit(event);
-    } catch {
-      closed = true;
-    }
-  };
-  const gone = () => closed || options.signal?.aborted === true;
+  const { send, gone } = makeSender(emit, options.signal);
 
   const timed = async <T>(stage: string, run: () => T | Promise<T>): Promise<T> => {
     const at = performance.now();
@@ -410,62 +491,18 @@ export async function handleMessage(
       return false;
     };
 
-    /** Sends the reply one sentence at a time, voiced, each as soon as it's ready. */
-    const voiceReply = async (said: Outcome): Promise<void> => {
-      let parts: string[];
-      try {
-        parts = ctx.sentences(said.text);
-      } catch {
-        parts = [];
-      }
-      if (parts.length === 0) parts = [said.text];
-
-      let voiced = options.speak !== false;
-      let give: (() => void) | undefined;
-      if (voiced) {
-        // Waiting for a slot ends when the visitor leaves, or after a while, when the reply goes out as text only.
-        const tired = new AbortController();
-        const timer = setTimeout(() => tired.abort(), ctx.voiceWaitMs ?? VOICE_WAIT_MS);
-        try {
-          give = await ctx.voice.acquire(options.signal ? AbortSignal.any([options.signal, tired.signal]) : tired.signal);
-        } catch {
-          if (gone()) return;
-          voiced = false;
-          ctx.log("chat: no voice slot came free in time; the reply went out as text only");
-        } finally {
-          clearTimeout(timer);
-        }
-      }
-      try {
-        for (const [index, text] of parts.entries()) {
-          if (gone()) break;
-          let spoken: Spoken | null = null;
-          if (voiced) {
-            try {
-              // Only generated answers are new text each time; everything else is worth keeping.
-              spoken = await deps.speak(text, { cache: said.kind !== "answer" });
-            } catch {
-              spoken = null;
-            }
-          }
-          if (index === 0) {
-            timings.first_audio = Math.round(performance.now() - started);
-            await send({ type: "state", state: "speaking" });
-          }
-          await send({
-            type: "sentence",
-            index,
-            text,
-            audio: spoken?.audio ?? null,
-            duration: spoken?.duration ?? estimateSeconds(text),
-            words: spoken?.words ?? null,
-            visemes: spoken?.visemes ?? null,
-          });
-        }
-      } finally {
-        give?.();
-      }
-    };
+    const voiceReply = (said: Outcome) =>
+      playReply(ctx, said.text, {
+        // Only generated answers are new text each time; everything else is worth keeping.
+        cache: said.kind !== "answer",
+        speak: options.speak,
+        signal: options.signal,
+        send,
+        gone,
+        onFirstSentence: () => {
+          timings.first_audio = Math.round(performance.now() - started);
+        },
+      });
 
     let said: Outcome = passed.ok
       ? await decideOutcome()

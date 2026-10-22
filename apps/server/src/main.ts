@@ -45,12 +45,17 @@ const sql = connect();
 const ran = await migrate(sql);
 if (ran.length) log(`database updated: ${ran.join(", ")}`);
 
-const chat = await buildChat({ sql, log });
+const chat = await buildChat({ sql, log }).catch((err: unknown) => {
+  // A file in knowledge/ that can't be read says which one and what's wrong; no stack trace needed.
+  log(`!! The api can't start: ${err instanceof Error ? err.message : String(err)}`);
+  process.exit(1);
+});
 const modelsUrl = setting("MODELS_URL", "http://127.0.0.1:8790");
 
 const app = createApp({
   sql,
   pipeline: chat.pipeline,
+  buttons: chat.buttons,
   config: {
     originSecret: setting("ORIGIN_SECRET"),
     cookieSecret: setting("COOKIE_SECRET"),

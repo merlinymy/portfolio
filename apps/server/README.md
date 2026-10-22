@@ -63,9 +63,14 @@ The instructions for the three Claude calls, and the handoff email's summary, ar
 first message that needs them; restart it after editing one. The fixed reply texts (strikes,
 refusals, limits) are in `src/chat/replies.ts`.
 
+**The question buttons:** `GET /api/instant` lists them, and `POST /api/instant` `{id}` plays one as
+the same stream of events as a chat reply, from audio voiced ahead of time: no AI call, no search,
+and no limits but the flood limit. Repeat clicks play the next approved wording. The buttons and
+their wordings are private, in `knowledge/buttons.yaml`; `npm run buttons -- review` voices them all
+and writes a page to listen to them on, and only versions marked `approved: true` are ever played.
+
 **The other routes:** `GET /api/health`, `POST`/`GET /api/visitor` (the cookie, after a Cloudflare
-Turnstile check), `POST /api/handoff` (the form that emails you), `POST /api/instant` (logs a click
-on an instant-answer chip).
+Turnstile check), `POST /api/handoff` (the form that emails you).
 
 ## Commands
 
@@ -78,6 +83,8 @@ on an instant-answer chip).
 | `npm run transcripts -- show <conversationId>` | One conversation, message by message, with what was decided |
 | `npm run transcripts -- purge` | Deletes conversations and handoffs over 12 months old (the api also does this daily) |
 | `npm run speed` | Each stage's typical and slow (1 in 20) time over recent messages |
+| `npm run buttons -- review` | Voices every wording of the question buttons and writes the listening page, `knowledge/voice/buttons/index.html` |
+| `npm run buttons -- voice` | Voices only the approved wordings, so clicks play at once |
 | `npm run redteam` | The red-team test (below) |
 
 ## The red team

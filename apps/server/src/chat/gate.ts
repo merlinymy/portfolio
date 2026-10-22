@@ -69,6 +69,11 @@ export interface Gate {
   check(input: GateInput): Promise<GateResult>;
   /** Whether the month's spending has reached the cap (sending the one-a-month email the first time). */
   overCap(): Promise<boolean>;
+  /**
+   * Whether this browser is locked (a lock that has run out is lifted first). For the question
+   * buttons, which call no AI and so skip the message limits and the spending cap.
+   */
+  isLocked(visitorId: string): Promise<boolean>;
 }
 
 export interface GateOptions {
@@ -143,6 +148,12 @@ export function makeGate(options: GateOptions): Gate {
   return {
     limits,
     overCap: spendingReached,
+    async isLocked(visitorId) {
+      await unlockIfExpired(sql, visitorId);
+      const visitor = await getVisitor(sql, visitorId);
+      if (!visitor) throw new Error("unknown visitor");
+      return visitor.lockedUntil !== null;
+    },
     async check(input) {
       if (busy.has(input.visitorId)) return refuse("tooFast");
       busy.add(input.visitorId);

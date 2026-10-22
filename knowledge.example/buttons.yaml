@@ -1,0 +1,20 @@
+# The chat's question buttons, with made-up values (the real file is knowledge/buttons.yaml, which
+# git ignores). A click plays a version voiced ahead of time on the Mac: no AI call, no search.
+# Repeat clicks play the next approved version; only `approved: true` versions are ever played.
+# Each button has either `versions` (several wordings of the same approved facts) or `answer` (the
+# id of a fixed answer in answers.yaml, said word for word).
+- id: about-you
+  question: Tell me about yourself.
+  versions:
+    - approved: true
+      text: >-
+        I'm Alex. I build small tools that help bakers plan their week, and I care most about whether
+        the plan actually works on a busy Saturday.
+    - approved: false
+      text: >-
+        Hi, I'm Alex. I make planning tools for bakers, and I spend most of my time checking that they
+        hold up when the shop gets busy.
+
+- id: start-date
+  question: When can you start?
+  answer: availability-location

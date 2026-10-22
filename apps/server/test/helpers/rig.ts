@@ -4,6 +4,7 @@
  * returned Rig.
  */
 import type { Sql } from "../../src/db/client.ts";
+import type { Button } from "../../src/chat/buttons.ts";
 import { makeGate } from "../../src/chat/gate.ts";
 import type { PipelineContext } from "../../src/chat/pipeline.ts";
 import type { REFUSE } from "../../src/chat/replies.ts";
@@ -49,6 +50,28 @@ export function decide(category: Category, refusedBefore: ReadonlySet<Category>)
   if (category === "other_language") return { action: "english_only" };
   return { action: "strike" };
 }
+
+/** Question buttons: one with three approved wordings (and a fourth not approved), one fixed answer, one with nothing approved yet. */
+export const BUTTONS: Button[] = [
+  {
+    id: "about-you",
+    question: "Tell me about yourself.",
+    drafts: [
+      { text: "I'm Merlin. I build AI tools for experts.", approved: true },
+      { text: "Hi, Merlin here. I like useful AI. It has to be right.", approved: true },
+      { text: "Short version: AI tools for experts.", approved: true },
+      { text: "This wording was never approved.", approved: false },
+    ],
+    versions: ["I'm Merlin. I build AI tools for experts.", "Hi, Merlin here. I like useful AI. It has to be right.", "Short version: AI tools for experts."],
+  },
+  {
+    id: "start-date",
+    question: "When can you start?",
+    drafts: [{ text: "I'm available from January.", approved: true }],
+    versions: ["I'm available from January."],
+  },
+  { id: "role", question: "What kind of role are you looking for?", drafts: [{ text: "Not approved yet.", approved: false }], versions: [] },
+];
 
 export const HITS: Hit[] = [
   { id: "projects/rag#1", source: "projects/rag.md", title: "RAG", kind: "project", body: "Built a RAG system.", score: 0.03, meaning: 1, keyword: 2 },

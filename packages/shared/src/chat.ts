@@ -13,10 +13,22 @@ export interface ChatRequest {
   conversationId?: string;
 }
 
-/** One of the six instant-answer chips was clicked (plan §7.11); logged only. */
+/**
+ * POST /api/instant's body: a question button was clicked (plan §7.11). The answer is a stream of
+ * events like POST /api/chat's, ending in `done` with kind "fixed" (or "gate" if the browser is locked).
+ */
 export interface InstantClick {
+  /** The button's id, from GET /api/instant. */
   id: string;
+  /** Omit and the click goes in the browser's latest conversation; send back the one from `meta` to name it. */
   conversationId?: string;
+}
+
+/** One question button, from GET /api/instant: what to show and what to send back on a click. */
+export interface InstantButton {
+  id: string;
+  /** The question on the button, as the visitor reads it. */
+  question: string;
 }
 
 /** POST /api/handoff's body: the visitor's details for the real Merlin (plan §7.5). */
