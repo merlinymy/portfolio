@@ -1,6 +1,6 @@
 # Face looks: artistic styles for the face
 
-Status: **steps 1 and 2 built (2026-10-21):** the look switcher, the frame-time readout, flame, and ink in water (third try: a sculpted ink face that breaks up into wisps). Next: face of water, if ink in water is kept.
+Status: **steps 1 and 2 built (2026-10-21):** the look switcher, the frame-time readout, flame, and ink in water (third try: a sculpted ink face that breaks up into wisps). **Paused the same day:** you moved on to phase 4. Face of water and raised from sand aren't built; the site keeps points and edges as its look.
 
 Today the face is drawn as glowing points and edges. This plan adds other **looks**: different ways
 of drawing the same moving face. Each is a set of shaders, small programs that run on the graphics
