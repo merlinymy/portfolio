@@ -1,0 +1,10 @@
+{
+  "name": "@portfolio/shared",
+  "private": true,
+  "type": "module",
+  "version": "0.0.1",
+  "description": "Types shared by the site and the chat backend (plan §8). Type-only, so nothing here runs.",
+  "exports": {
+    "./chat": "./src/chat.ts"
+  }
+}

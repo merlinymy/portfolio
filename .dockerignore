@@ -1,0 +1,12 @@
+# Docker's build context is the repo root, and it is sent to Docker before anything is copied. This
+# list starts from "nothing" and allows back only what apps/server/Dockerfile copies, so .env,
+# knowledge/, profile/ and node_modules can't end up in the image or in the build cache.
+*
+!package.json
+!package-lock.json
+!apps/server/package.json
+!apps/server/src
+!packages/shared/package.json
+!packages/shared/src
+**/node_modules
+**/.DS_Store

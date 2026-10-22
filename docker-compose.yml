@@ -1,9 +1,16 @@
-# The chat backend's services in Docker on the Mac (plan §3.2). For now only Postgres, which holds
-# the search passages (phase 4); the api joins it in phase 5. The model server runs outside Docker
+# The chat backend's services in Docker on the Mac (plan §3.2): Postgres, which holds the search
+# passages and the chat's records, and the api (phase 5). The model server runs outside Docker
 # (services/models), because containers on a Mac can't use the graphics chip.
 #
-#   docker compose up -d      start it (and again after each restart of the Mac)
-#   docker compose down       stop it; the data stays in the postgres volume
+#   docker compose up -d      start Postgres only (and again after each restart of the Mac)
+#   docker compose --profile api up -d --build
+#                             start Postgres and the api, rebuilding the api's image first; add
+#                             --build again after changing the api's code
+#   docker compose --profile api down
+#                             stop both; the data stays in the postgres volume
+#
+# The api is behind a profile so that `docker compose up -d` (npm run db) never starts it. During
+# development `npm run api` runs the api directly instead, and the two would fight over port 8791.
 #
 # The password comes from .env (copy .env.example and fill it in; git ignores .env).
 services:
@@ -25,6 +32,61 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # The chat api (apps/server, phase 5). Needs the model server running on the Mac
+  # (`npm run voice`) and the settings in .env. Open on this Mac only, at 127.0.0.1:8791; the
+  # Cloudflare Worker reaches it through the tunnel (worker/README.md).
+  api:
+    profiles: ["api"]
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    # A tiny init process as PID 1, so `docker compose stop` ends the api at once instead of
+    # waiting ten seconds and killing it.
+    init: true
+    restart: unless-stopped
+    env_file: .env
+    # .env describes the api running directly on the Mac. Inside Docker the same things live
+    # elsewhere, so these win over it.
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      # The model server runs on the Mac itself, outside Docker.
+      MODELS_URL: http://host.docker.internal:8790
+      API_HOST: 0.0.0.0
+      # Fixed here; API_PORT in .env only chooses the port on the Mac (see ports below).
+      API_PORT: "8791"
+    ports:
+      - "127.0.0.1:${API_PORT:-8791}:8791"
+    volumes:
+      # Only what the api reads, read-only: the profile text, your approved answers and the
+      # instructions. The rest of knowledge/ (face scans, voice recordings, drafts) never enters
+      # the container, since this is the part of the Mac the internet talks to. The api writes only
+      # to the last two, the Mac's own folders: the voice audio cache, and emails saved as files.
+      - ./content:/app/content:ro
+      - ./knowledge/answers.yaml:/app/knowledge/answers.yaml:ro
+      - ./knowledge/smalltalk.yaml:/app/knowledge/smalltalk.yaml:ro
+      - ./knowledge/prompts:/app/knowledge/prompts:ro
+      - ./knowledge/cache:/app/knowledge/cache
+      - ./knowledge/outbox:/app/knowledge/outbox
+    # Nothing in the container can change its own files or gain privileges.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Whether the api is listening. Only that: its own routes refuse any request without the
+    # Worker's secret header, so this can't ask the api a question.
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('node:net').connect(8791, '127.0.0.1').on('connect', () => process.exit(0)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
 
 volumes:
   postgres:

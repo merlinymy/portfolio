@@ -17,9 +17,14 @@
     "check": "npm run check -w @portfolio/site",
     "voice": "cd services/models && uv run server.py",
     "db": "docker compose up -d",
+    "api": "npm run api -w @portfolio/server",
     "ingest": "npm run ingest -w @portfolio/server --",
     "search": "npm run search -w @portfolio/server --",
     "test:search": "npm run test:search -w @portfolio/server",
+    "strikes": "npm run strikes -w @portfolio/server --",
+    "transcripts": "npm run transcripts -w @portfolio/server --",
+    "speed": "npm run speed -w @portfolio/server",
+    "redteam": "npm run redteam -w @portfolio/server --",
     "face": "node tools/face/build.ts",
     "face:still": "node tools/face/still.ts",
     "test:e2e": "npm run build && playwright test",
@@ -30,5 +35,8 @@
     "@playwright/test": "^1.64.1",
     "jpeg-js": "^0.4.4",
     "wrangler": "^4.151.3"
+  },
+  "overrides": {
+    "zod": "4.6.5"
   }
 }

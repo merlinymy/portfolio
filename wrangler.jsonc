@@ -1,10 +1,19 @@
-// Cloudflare Workers config: serves the Astro build as static files.
-// The /api proxy to the Mac mini is added in phase 5 (plan §3.2).
+// Cloudflare Workers config: serves the Astro build as static files, and runs worker/index.ts only
+// for /api/*, which it forwards to the api on the Mac (plan §3.2).
+//
+// ORIGIN_URL (the tunnel's address) and ORIGIN_SECRET (shared with the api) are deliberately not
+// here: the repo is public, and while they're missing /api answers 503 "offline", which is what
+// the preview site should do until the tunnel exists. At launch, set both as secrets so they
+// survive every deploy (worker/README.md); locally they go in .dev.vars (git ignores it).
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "merlinyang",
+  "main": "worker/index.ts",
   "compatibility_date": "2026-10-20",
   "assets": {
-    "directory": "./apps/site/dist"
+    "directory": "./apps/site/dist",
+    "binding": "ASSETS",
+    // Every other URL goes straight to the static files without waking the Worker.
+    "run_worker_first": ["/api/*"]
   }
 }

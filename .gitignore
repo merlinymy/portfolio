@@ -153,6 +153,9 @@ xcuserdata/
 .build/
 # Wrangler local dev state
 .wrangler/
+# Local secrets for `wrangler dev` (ORIGIN_URL, ORIGIN_SECRET); see worker/README.md
+.dev.vars
+.dev.vars.*
 # Playwright test output
 test-results/
 playwright-report/

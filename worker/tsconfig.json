@@ -1,0 +1,18 @@
+{
+  // Checks the Worker and its test (`npx tsc -p worker`). The Worker uses only the web-standard
+  // fetch, Request and Response, which the Node types also describe, so there's nothing to add.
+  // Node runs test-stream.ts as it is, by stripping the types, so only erasable TypeScript.
+  "compilerOptions": {
+    "target": "es2024",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["*.ts"]
+}
