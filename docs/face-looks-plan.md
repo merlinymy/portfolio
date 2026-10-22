@@ -1,6 +1,6 @@
 # Face looks: artistic styles for the face
 
-Status: **steps 1 and 2 built (2026-10-21):** the look switcher, the frame-time readout, flame, and ink in water. Next: face of water.
+Status: **steps 1 and 2 built (2026-10-21):** the look switcher, the frame-time readout, flame, and ink in water (third try: a sculpted ink face that breaks up into wisps). Next: face of water, if ink in water is kept.
 
 Today the face is drawn as glowing points and edges. This plan adds other **looks**: different ways
 of drawing the same moving face. Each is a set of shaders, small programs that run on the graphics
@@ -59,30 +59,40 @@ They're drawn brighter, so the features stay readable inside the effect.
 
 - **What you'd see:** an underwater view. The camera looks level, just below the surface, so the
   water's surface shows from underneath: a shimmering, rippling ceiling along the top, catching the
-  light from above. Below it, your face hangs in black water, and white ink billows off it, curling
-  into slow eddies and fading. Fresh ink keeps redrawing the face, so it stays recognisable. Faint
-  caustics play over the ink. Caustics are the moving net of light that sunlight makes underwater.
+  light from above. Below it hangs your face, sculpted out of white ink and lit like a sculpture,
+  with soft clouds of thicker and thinner ink across it. From the outline inward it breaks up, and
+  the broken edge peels away in smoky wisps that curl into the water, the way ink does when it's
+  dropped into water. Faint caustics play over the face and the wisps. Caustics are the moving net
+  of light that sunlight makes underwater.
+- **References (2026-10-21):** four pictures in `knowledge/faceReferece/` (kept private): faces
+  made of ink or smoke that stay solid and readable at the front and dissolve into wisps at the
+  back. "Drop" means how the ink looks, not an event on a timer.
 - **How it's made:**
-  - **The ink:** the same feedback loop as the flame, but the motion is curl noise, a swirling
-    flow that never piles up or thins out, so the ink swirls the way it does in water. The face
-    injects ink where it is. When it moves, the ink trails behind it, as if pushed through the
-    water. Ink that rises spreads out under the surface.
+  - **The face:** the face surface itself, drawn with its own lighting (a soft main light, the
+    water's light filling the shadows, a rim along its edges). A noise pattern on the surface gives
+    the swirled ink. How broken up each spot is grows toward the outline, and more toward the top;
+    a second noise pattern decides where the edge frays.
+  - **The wisps:** each frame the face is also drawn into a hidden picture of what it sheds: ink
+    just past its broken edge, in fine streaks, and which way to push it (outward, off the face).
+    That ink is carried by a swirling current (curl noise, a flow that never piles up or thins
+    out), in two steps that keep fine wisps crisp, and fades over a few seconds. The wisps are
+    shaded by how much ink lies between them and the light above, so they look rounded.
   - **The surface from below:** the underside of a rippling sheet of water, seen almost edge-on. At
     that angle water acts like a mirror: light from below bounces back down, which is why a surface
-    seen from underneath looks like silver. Here it mirrors the dark water and the ink, with bright
-    glints where the ripples face the light.
-  - **The caustics:** a moving light pattern from above that brightens the ink where it falls.
-- **Lab settings:** ink color and amount, how fast it fades, swirl size and speed, how far the ink
-  trails, the surface's height in the view, the ripple size and speed, the shimmer, the caustics,
-  and the face strength. Each has a short note.
+    seen from underneath looks like silver. Here it mirrors the dark water, the face and the wisps,
+    with bright glints where the ripples face the light.
+- **Lab settings:** every part above, each with a short note: the face's lighting, how much it
+  dissolves and where, the wisps' amount, push, thickness and fade, the current, the surface, the
+  light, the specks and the reactions.
 - **How it reacts:**
   - The pointer stirs the water.
-  - A click sends out a pulse that pushes the ink.
+  - A click sends out a pulse that pushes the wisps.
   - Speaking puffs ink from the mouth.
   - A strike turns the ink red.
-- **Cost:** a 192 × 192 flow and the surface band, a few passes a frame.
-- **Later, if wanted:** a true fluid simulation, the kind used in WebGL fluid demos. It reacts more
-  realistically to the pointer but takes about 20 passes a frame. Start without it.
+- **Tried and dropped:** drawing the face only as ink laid into the water (the first two tries).
+  The ink spread as soon as it was laid, so the face never read.
+- **Cost:** on the MacBook Air at full screen it holds 60 frames a second. Not yet measured on the
+  iPhone.
 
 ### 3. Face of water
 
